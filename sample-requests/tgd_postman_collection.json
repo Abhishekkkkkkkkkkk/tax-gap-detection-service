@@ -1,0 +1,363 @@
+{
+  "info": {
+    "name": "Tax Gap Detection & Compliance Validation Service (TGD)",
+    "_postman_id": "tgd-api-collection-v1",
+    "description": "Comprehensive Postman collection for the Tax Gap Detection Service assessment APIs.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "basic",
+    "basic": [
+      {
+        "key": "username",
+        "value": "auditor",
+        "type": "string"
+      },
+      {
+        "key": "password",
+        "value": "auditor123",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Transaction Ingestion",
+      "item": [
+        {
+          "name": "Upload Batch (Valid Transactions)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "[\n  {\n    \"transactionId\": \"TX-SALE-1001\",\n    \"date\": \"2026-10-15\",\n    \"customerId\": \"CUST-ALPHA\",\n    \"amount\": 25000.00,\n    \"taxRate\": 0.18,\n    \"reportedTax\": 4500.00,\n    \"transactionType\": \"SALE\"\n  },\n  {\n    \"transactionId\": \"TX-SALE-1002\",\n    \"date\": \"2026-10-16\",\n    \"customerId\": \"CUST-ALPHA\",\n    \"amount\": 15000.00,\n    \"taxRate\": 0.18,\n    \"reportedTax\": 2700.50,\n    \"transactionType\": \"SALE\"\n  },\n  {\n    \"transactionId\": \"TX-REFUND-1003\",\n    \"date\": \"2026-10-17\",\n    \"customerId\": \"CUST-ALPHA\",\n    \"amount\": 5000.00,\n    \"taxRate\": 0.18,\n    \"reportedTax\": 900.00,\n    \"transactionType\": \"REFUND\",\n    \"originalTransactionId\": \"TX-SALE-1001\"\n  },\n  {\n    \"transactionId\": \"TX-SALE-2001\",\n    \"date\": \"2026-10-18\",\n    \"customerId\": \"CUST-BETA\",\n    \"amount\": 40000.00,\n    \"taxRate\": 0.12,\n    \"reportedTax\": 4800.00,\n    \"transactionType\": \"SALE\"\n  }\n]"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/transactions/batch",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "transactions", "batch"]
+            }
+          }
+        },
+        {
+          "name": "Upload Batch (With Violations & Underpayments)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "[\n  {\n    \"transactionId\": \"TX-VIOL-001\",\n    \"date\": \"2026-10-20\",\n    \"customerId\": \"CUST-GAMMA\",\n    \"amount\": 150000.00,\n    \"taxRate\": 0.18,\n    \"reportedTax\": 27000.00,\n    \"transactionType\": \"SALE\"\n  },\n  {\n    \"transactionId\": \"TX-VIOL-002\",\n    \"date\": \"2026-10-21\",\n    \"customerId\": \"CUST-GAMMA\",\n    \"amount\": 10000.00,\n    \"taxRate\": 0.18,\n    \"reportedTax\": 900.00,\n    \"transactionType\": \"SALE\"\n  },\n  {\n    \"transactionId\": \"TX-VIOL-003\",\n    \"date\": \"2026-10-22\",\n    \"customerId\": \"CUST-DELTA\",\n    \"amount\": 12000.00,\n    \"taxRate\": 0.18,\n    \"reportedTax\": null,\n    \"transactionType\": \"SALE\"\n  },\n  {\n    \"transactionId\": \"TX-VIOL-004\",\n    \"date\": \"2026-10-23\",\n    \"customerId\": \"CUST-DELTA\",\n    \"amount\": 75000.00,\n    \"taxRate\": 0.05,\n    \"reportedTax\": 3750.00,\n    \"transactionType\": \"SALE\"\n  },\n  {\n    \"transactionId\": \"TX-VIOL-005\",\n    \"date\": \"2026-10-24\",\n    \"customerId\": \"CUST-ALPHA\",\n    \"amount\": 30000.00,\n    \"taxRate\": 0.18,\n    \"reportedTax\": 5400.00,\n    \"transactionType\": \"REFUND\",\n    \"originalTransactionId\": \"TX-SALE-1001\"\n  }\n]"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/transactions/batch",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "transactions", "batch"]
+            }
+          }
+        },
+        {
+          "name": "Upload Batch (Validation Failures)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "[\n  {\n    \"transactionId\": \"TX-FAIL-001\",\n    \"date\": null,\n    \"customerId\": \"CUST-EPSILON\",\n    \"amount\": 5000.00,\n    \"taxRate\": 0.18,\n    \"reportedTax\": 900.00,\n    \"transactionType\": \"SALE\"\n  },\n  {\n    \"transactionId\": \"TX-FAIL-002\",\n    \"date\": \"2026-10-25\",\n    \"customerId\": null,\n    \"amount\": -200.00,\n    \"taxRate\": 0.18,\n    \"reportedTax\": 0.00,\n    \"transactionType\": \"SALE\"\n  }\n]"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/transactions/batch",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "transactions", "batch"]
+            }
+          }
+        },
+        {
+          "name": "Upload Single Transaction",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"transactionId\": \"TX-SINGLE-5001\",\n  \"date\": \"2026-10-26\",\n  \"customerId\": \"CUST-ALPHA\",\n  \"amount\": 12000.00,\n  \"taxRate\": 0.18,\n  \"reportedTax\": 2160.00,\n  \"transactionType\": \"SALE\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/transactions",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "transactions"]
+            }
+          }
+        },
+        {
+          "name": "Get Transaction by ID",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/transactions/TX-SALE-1001",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "transactions", "TX-SALE-1001"]
+            }
+          }
+        },
+        {
+          "name": "List All Transactions",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/transactions?page=0&size=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "transactions"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Reports",
+      "item": [
+        {
+          "name": "Customer Tax Summary Report (All Customers)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/reports/customer-tax-summary",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "reports", "customer-tax-summary"]
+            }
+          }
+        },
+        {
+          "name": "Customer Tax Summary Report (Single Customer)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/reports/customer-tax-summary/CUST-ALPHA",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "reports", "customer-tax-summary", "CUST-ALPHA"]
+            }
+          }
+        },
+        {
+          "name": "Exception Summary Report",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/reports/exception-summary",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "reports", "exception-summary"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Exceptions",
+      "item": [
+        {
+          "name": "Get All Exceptions",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/exceptions?page=0&size=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "exceptions"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Filter Exceptions by Customer",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/exceptions?customerId=CUST-GAMMA",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "exceptions"],
+              "query": [
+                {
+                  "key": "customerId",
+                  "value": "CUST-GAMMA"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Filter Exceptions by Severity (HIGH)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/exceptions?severity=HIGH",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "exceptions"],
+              "query": [
+                {
+                  "key": "severity",
+                  "value": "HIGH"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Filter Exceptions by Rule Name",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/exceptions?ruleName=GST_SLAB_VIOLATION",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "exceptions"],
+              "query": [
+                {
+                  "key": "ruleName",
+                  "value": "GST_SLAB_VIOLATION"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Audit Logs",
+      "item": [
+        {
+          "name": "Get All Audit Logs",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/audit-logs?page=0&size=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "audit-logs"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Audit Logs for Transaction",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/audit-logs/transaction/TX-SALE-1001",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "audit-logs", "transaction", "TX-SALE-1001"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Rules Administration (Admin Only)",
+      "item": [
+        {
+          "name": "List All Tax Rules",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/rules",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "rules"]
+            }
+          }
+        },
+        {
+          "name": "Toggle Tax Rule (Admin auth)",
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "admin",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "admin123",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/rules/1/toggle",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "rules", "1", "toggle"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Auth",
+      "item": [
+        {
+          "name": "Inspect Current User (Auth Me)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "auth", "me"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

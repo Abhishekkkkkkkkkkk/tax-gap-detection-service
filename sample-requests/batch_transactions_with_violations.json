@@ -1,0 +1,48 @@
+[
+  {
+    "transactionId": "TX-VIOL-001",
+    "date": "2026-10-20",
+    "customerId": "CUST-GAMMA",
+    "amount": 150000.00,
+    "taxRate": 0.18,
+    "reportedTax": 27000.00,
+    "transactionType": "SALE"
+  },
+  {
+    "transactionId": "TX-VIOL-002",
+    "date": "2026-10-21",
+    "customerId": "CUST-GAMMA",
+    "amount": 10000.00,
+    "taxRate": 0.18,
+    "reportedTax": 900.00,
+    "transactionType": "SALE"
+  },
+  {
+    "transactionId": "TX-VIOL-003",
+    "date": "2026-10-22",
+    "customerId": "CUST-DELTA",
+    "amount": 12000.00,
+    "taxRate": 0.18,
+    "reportedTax": null,
+    "transactionType": "SALE"
+  },
+  {
+    "transactionId": "TX-VIOL-004",
+    "date": "2026-10-23",
+    "customerId": "CUST-DELTA",
+    "amount": 75000.00,
+    "taxRate": 0.05,
+    "reportedTax": 3750.00,
+    "transactionType": "SALE"
+  },
+  {
+    "transactionId": "TX-VIOL-005",
+    "date": "2026-10-24",
+    "customerId": "CUST-ALPHA",
+    "amount": 30000.00,
+    "taxRate": 0.18,
+    "reportedTax": 5400.00,
+    "transactionType": "REFUND",
+    "originalTransactionId": "TX-SALE-1001"
+  }
+]

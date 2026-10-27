@@ -1,0 +1,29 @@
+[
+  {
+    "transactionId": "TX-FAIL-001",
+    "date": null,
+    "customerId": "CUST-EPSILON",
+    "amount": 5000.00,
+    "taxRate": 0.18,
+    "reportedTax": 900.00,
+    "transactionType": "SALE"
+  },
+  {
+    "transactionId": "TX-FAIL-002",
+    "date": "2026-10-25",
+    "customerId": null,
+    "amount": -200.00,
+    "taxRate": 0.18,
+    "reportedTax": 0.00,
+    "transactionType": "SALE"
+  },
+  {
+    "transactionId": "",
+    "date": "2026-10-25",
+    "customerId": "CUST-EPSILON",
+    "amount": 0.00,
+    "taxRate": -0.05,
+    "reportedTax": 0.00,
+    "transactionType": null
+  }
+]

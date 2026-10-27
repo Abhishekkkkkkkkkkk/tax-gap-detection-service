@@ -1,0 +1,48 @@
+[
+  {
+    "transactionId": "TX-SALE-1001",
+    "date": "2026-10-15",
+    "customerId": "CUST-ALPHA",
+    "amount": 25000.00,
+    "taxRate": 0.18,
+    "reportedTax": 4500.00,
+    "transactionType": "SALE"
+  },
+  {
+    "transactionId": "TX-SALE-1002",
+    "date": "2026-10-16",
+    "customerId": "CUST-ALPHA",
+    "amount": 15000.00,
+    "taxRate": 0.18,
+    "reportedTax": 2700.50,
+    "transactionType": "SALE"
+  },
+  {
+    "transactionId": "TX-REFUND-1003",
+    "date": "2026-10-17",
+    "customerId": "CUST-ALPHA",
+    "amount": 5000.00,
+    "taxRate": 0.18,
+    "reportedTax": 900.00,
+    "transactionType": "REFUND",
+    "originalTransactionId": "TX-SALE-1001"
+  },
+  {
+    "transactionId": "TX-SALE-2001",
+    "date": "2026-10-18",
+    "customerId": "CUST-BETA",
+    "amount": 40000.00,
+    "taxRate": 0.12,
+    "reportedTax": 4800.00,
+    "transactionType": "SALE"
+  },
+  {
+    "transactionId": "TX-EXPENSE-2002",
+    "date": "2026-10-19",
+    "customerId": "CUST-BETA",
+    "amount": 8000.00,
+    "taxRate": 0.05,
+    "reportedTax": 400.00,
+    "transactionType": "EXPENSE"
+  }
+]

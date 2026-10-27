@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  mysql-db:
+    image: mysql:8.4
+    container_name: tgd-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: tgd_db
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_USER: tgd_user
+      MYSQL_PASSWORD: tgd_password
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+
+  postgres-db:
+    image: postgres:16-alpine
+    container_name: tgd-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: tgd_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+volumes:
+  mysql-data:
+  postgres-data:
