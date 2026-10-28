@@ -9,6 +9,7 @@ import com.avega.tgd.dto.response.TransactionResponseDto;
 import com.avega.tgd.service.TransactionService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
@@ -117,7 +118,7 @@ public class TransactionController {
     @GetMapping
     @Operation(summary = "Get paged list of transactions")
     public ResponseEntity<ApiResponseDto<Page<TransactionResponseDto>>> getTransactions(
-            @PageableDefault(size = 20) Pageable pageable) {
+            @ParameterObject @PageableDefault(size = 20) Pageable pageable) {
         Page<TransactionResponseDto> page = transactionService.getTransactions(pageable);
         return ResponseEntity.ok(ApiResponseDto.ok(page));
     }

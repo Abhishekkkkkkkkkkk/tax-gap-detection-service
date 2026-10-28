@@ -8,6 +8,7 @@ import com.avega.tgd.service.ExceptionService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
@@ -59,7 +60,7 @@ public class ExceptionController {
             @Parameter(description = "Filter by rule name")
             @RequestParam(required = false) String ruleName,
 
-            @PageableDefault(size = 20, sort = "timestamp") Pageable pageable) {
+            @ParameterObject @PageableDefault(size = 20, sort = "timestamp") Pageable pageable) {
 
         Page<ExceptionEntity> page = exceptionService.getExceptions(customerId, severity, ruleName, pageable);
         Page<ExceptionResponseDto> dtoPage = page.map(ExceptionResponseDto::fromEntity);

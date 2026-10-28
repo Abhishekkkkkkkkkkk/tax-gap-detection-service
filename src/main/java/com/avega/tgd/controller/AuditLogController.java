@@ -8,6 +8,7 @@ import com.avega.tgd.service.AuditLogService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
@@ -55,7 +56,7 @@ public class AuditLogController {
             @Parameter(description = "Filter by event type (INGESTION, RULE_EXECUTION, TAX_COMPUTATION)")
             @RequestParam(required = false) AuditEventType eventType,
 
-            @PageableDefault(size = 20, sort = "timestamp") Pageable pageable) {
+            @ParameterObject @PageableDefault(size = 20, sort = "timestamp") Pageable pageable) {
 
         Page<AuditLogEntity> page = auditLogService.getAuditLogs(transactionId, eventType, pageable);
         Page<AuditLogResponseDto> dtoPage = page.map(AuditLogResponseDto::fromEntity);
