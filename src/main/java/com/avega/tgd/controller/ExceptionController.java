@@ -16,15 +16,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 /**
- * REST controller managing tax compliance exception investigations.
- *
- * <p>Directly fulfills Requirement 4 ("Exception Management - APIs Required"):
- * <ul>
- *   <li><b>Get all exceptions:</b> Paginated list of all flagged compliance violations.</li>
- *   <li><b>Filtering:</b> Filter dynamically by {@code customerId}, {@code severity} (HIGH, MEDIUM, LOW),
- *       and {@code ruleName}.</li>
- *   <li><b>Individual Inspection:</b> Retrieve full exception details by surrogate primary key ID.</li>
- * </ul>
+ * REST controller for querying and filtering tax compliance exceptions.
  */
 @RestController
 @RequestMapping("/api/v1/exceptions")
@@ -37,17 +29,6 @@ public class ExceptionController {
         this.exceptionService = exceptionService;
     }
 
-    /**
-     * Retrieves a paginated list of exceptions with optional multi-attribute filters.
-     *
-     * <p>Filters are combined conjunctively (AND). Unsupplied filter parameters are ignored.
-     *
-     * @param customerId optional customer identifier filter
-     * @param severity   optional severity level filter (HIGH, MEDIUM, LOW)
-     * @param ruleName   optional rule name filter
-     * @param pageable   pagination configuration (defaults to 20 items sorted by timestamp descending)
-     * @return HTTP 200 OK with a page of {@link ExceptionResponseDto} objects
-     */
     @GetMapping
     @Operation(summary = "Get all exceptions with optional filters (customerId, severity, ruleName)")
     public ResponseEntity<ApiResponseDto<Page<ExceptionResponseDto>>> getExceptions(
@@ -67,12 +48,6 @@ public class ExceptionController {
         return ResponseEntity.ok(ApiResponseDto.ok(dtoPage));
     }
 
-    /**
-     * Retrieves an individual exception by its database primary key.
-     *
-     * @param id the exception database ID
-     * @return HTTP 200 OK with {@link ExceptionResponseDto}, or HTTP 404 NOT FOUND
-     */
     @GetMapping("/{id}")
     @Operation(summary = "Get exception record by ID")
     public ResponseEntity<ApiResponseDto<ExceptionResponseDto>> getExceptionById(@PathVariable Long id) {

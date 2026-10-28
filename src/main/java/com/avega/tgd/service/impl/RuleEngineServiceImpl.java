@@ -21,16 +21,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Implementation of {@link RuleEngineService} providing database-driven rule execution.
- *
- * <p>Mechanisms:
- * <ul>
- *   <li>Evaluators are discovered via Spring dependency injection as a {@code List<TaxRuleEvaluator>}
- *       and indexed in an in-memory lookup map by {@code ruleName}.</li>
- *   <li>Only rules marked {@code enabled = true} in the database are fetched for evaluation.</li>
- *   <li>Each evaluated rule logs an immutable audit event to provide transparency into which rules ran,
- *       what parameters were evaluated, and whether they passed or triggered an exception.</li>
- * </ul>
+ * Service executing database-driven compliance rules via the Strategy Pattern.
  */
 @Service
 public class RuleEngineServiceImpl implements RuleEngineService {
@@ -42,14 +33,6 @@ public class RuleEngineServiceImpl implements RuleEngineService {
     private final AuditLogService auditLogService;
     private final Map<String, TaxRuleEvaluator> evaluatorMap = new HashMap<>();
 
-    /**
-     * Constructs the rule engine and registers all available {@link TaxRuleEvaluator} beans.
-     *
-     * @param taxRuleRepository Repository for database rule definitions
-     * @param exceptionService  Service for generating compliance exceptions
-     * @param auditLogService   Service for recording execution audit logs
-     * @param evaluators        All Spring-managed evaluator beans
-     */
     public RuleEngineServiceImpl(TaxRuleRepository taxRuleRepository,
                                   ExceptionService exceptionService,
                                   AuditLogService auditLogService,
@@ -64,27 +47,18 @@ public class RuleEngineServiceImpl implements RuleEngineService {
         }
     }
 
-    /**
-     * Executes all active rules against the given transaction.
-     * Queries {@code taxRuleRepository.findByEnabledTrue()} so disabled rules are omitted dynamically.
-     *
-     * @param transaction Persisted transaction entity to inspect
-     */
     @Override
     @Transactional
     public void executeRules(TransactionEntity transaction) {
-        // Query only active/enabled rules from the database
         List<TaxRuleEntity> activeRules = taxRuleRepository.findByEnabledTrue();
 
         for (TaxRuleEntity rule : activeRules) {
             TaxRuleEvaluator evaluator = evaluatorMap.get(rule.getRuleName());
             if (evaluator == null) {
-                // Defensive handling: database rule has no matching Java strategy component
                 log.warn("No evaluator bean found for active rule '{}'. Skipping.", rule.getRuleName());
                 continue;
             }
 
-            // Execute evaluation passing transaction, rule's custom JSON config, and fallback severity
             RuleEvaluationResult result = evaluator.evaluate(transaction, rule.getConfigJson(), rule.getSeverity());
 
             Map<String, Object> auditPayload = new HashMap<>();
@@ -95,7 +69,6 @@ public class RuleEngineServiceImpl implements RuleEngineService {
             auditPayload.put("message", result.getMessage());
 
             if (!result.isPassed()) {
-                // Violation detected: persist an Exception record for auditor review
                 exceptionService.createException(
                         transaction.getTransactionId(),
                         transaction.getCustomerId(),
@@ -107,27 +80,18 @@ public class RuleEngineServiceImpl implements RuleEngineService {
                 auditPayload.put("action", "EXCEPTION_GENERATED");
                 auditLogService.logEvent(AuditEventType.RULE_EXECUTION, transaction.getTransactionId(), auditPayload);
             } else {
-                // Rule passed: record compliant execution in the audit trail
                 auditPayload.put("action", "COMPLIANT");
                 auditLogService.logEvent(AuditEventType.RULE_EXECUTION, transaction.getTransactionId(), auditPayload);
             }
         }
     }
 
-    /**
-     * Returns all tax rules from the database.
-     */
     @Override
     @Transactional(readOnly = true)
     public List<TaxRuleEntity> getAllRules() {
         return taxRuleRepository.findAll();
     }
 
-    /**
-     * Finds a single rule by ID.
-     *
-     * @throws ResourceNotFoundException if rule ID does not exist
-     */
     @Override
     @Transactional(readOnly = true)
     public TaxRuleEntity getRuleById(Long id) {
@@ -135,9 +99,6 @@ public class RuleEngineServiceImpl implements RuleEngineService {
                 .orElseThrow(() -> new ResourceNotFoundException("Tax rule not found with id: " + id));
     }
 
-    /**
-     * Creates a new rule definition in the database.
-     */
     @Override
     @Transactional
     public TaxRuleEntity createRule(TaxRuleRequestDto dto) {
@@ -151,9 +112,6 @@ public class RuleEngineServiceImpl implements RuleEngineService {
         return taxRuleRepository.save(entity);
     }
 
-    /**
-     * Updates an existing rule configuration in the database.
-     */
     @Override
     @Transactional
     public TaxRuleEntity updateRule(Long id, TaxRuleRequestDto dto) {
@@ -166,9 +124,6 @@ public class RuleEngineServiceImpl implements RuleEngineService {
         return taxRuleRepository.save(rule);
     }
 
-    /**
-     * Inverts the enabled state of a rule. If active, disables it; if disabled, enables it.
-     */
     @Override
     @Transactional
     public TaxRuleEntity toggleRule(Long id) {

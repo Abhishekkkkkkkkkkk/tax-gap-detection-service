@@ -20,17 +20,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 /**
- * REST controller managing financial transaction ingestion and retrieval operations.
- *
- * <p>Endpoints provide:
- * <ul>
- *   <li>Batch transaction ingestion via direct JSON array ({@code /batch}) or wrapper object ({@code /upload}).</li>
- *   <li>Single transaction processing ({@code POST /api/v1/transactions}).</li>
- *   <li>Point lookups by unique transaction identifier ({@code GET /{transactionId}}).</li>
- *   <li>Paginated browsing of transaction history ({@code GET /api/v1/transactions}).</li>
- * </ul>
- *
- * <p>Security: Requires authenticated session with either {@code ROLE_AUDITOR} or {@code ROLE_ADMIN}.
+ * REST controller for transaction ingestion and retrieval operations.
  */
 @RestController
 @RequestMapping("/api/v1/transactions")
@@ -43,15 +33,6 @@ public class TransactionController {
         this.transactionService = transactionService;
     }
 
-    /**
-     * Uploads and processes a batch of financial transactions formatted as a direct JSON array.
-     *
-     * <p>Executes validation, expected tax and tax gap computation, and active rule evaluation.
-     * Individual record failures are isolated and reported without aborting the remaining batch.
-     *
-     * @param transactions list of transaction request DTOs
-     * @return HTTP 201 CREATED with {@link BatchUploadResponseDto} detailing processed and failed counts
-     */
     @PostMapping("/batch")
     @Operation(summary = "Upload a batch of transactions",
                description = "Validates each transaction, calculates tax gap & compliance, and runs active rules")
@@ -62,13 +43,6 @@ public class TransactionController {
                 .body(ApiResponseDto.ok("Batch transactions processed", response));
     }
 
-    /**
-     * Uploads and processes a batch of financial transactions wrapped inside an object container
-     * (e.g. {@code { "transactions": [ ... ] }}).
-     *
-     * @param request wrapper containing transaction request list
-     * @return HTTP 201 CREATED with {@link BatchUploadResponseDto}
-     */
     @PostMapping("/upload")
     @Operation(summary = "Upload transactions via container object",
                description = "Alias for batch upload accepting { \"transactions\": [...] }")
@@ -80,12 +54,6 @@ public class TransactionController {
                 .body(ApiResponseDto.ok("Batch transactions processed", response));
     }
 
-    /**
-     * Ingests and evaluates a single financial transaction synchronously.
-     *
-     * @param transaction the transaction request DTO
-     * @return HTTP 201 CREATED with the processed {@link TransactionResponseDto}
-     */
     @PostMapping
     @Operation(summary = "Upload a single transaction")
     public ResponseEntity<ApiResponseDto<TransactionResponseDto>> uploadSingle(
@@ -95,30 +63,18 @@ public class TransactionController {
                 .body(ApiResponseDto.ok("Transaction processed", response));
     }
 
-    /**
-     * Retrieves an individual transaction by its unique external transaction ID.
-     *
-     * @param transactionId the unique transaction identifier
-     * @return HTTP 200 OK with the transaction details, or HTTP 404 NOT FOUND
-     */
     @GetMapping("/{transactionId}")
-    @Operation(summary = "Get transaction by transactionId")
+    @Operation(summary = "Get transaction by external transaction ID")
     public ResponseEntity<ApiResponseDto<TransactionResponseDto>> getByTransactionId(
             @PathVariable String transactionId) {
         TransactionEntity entity = transactionService.getByTransactionId(transactionId);
         return ResponseEntity.ok(ApiResponseDto.ok(TransactionResponseDto.fromEntity(entity)));
     }
 
-    /**
-     * Retrieves a paginated list of transactions ordered by default sort criteria.
-     *
-     * @param pageable pagination parameters (page, size, sort)
-     * @return HTTP 200 OK with a page of {@link TransactionResponseDto}
-     */
     @GetMapping
-    @Operation(summary = "Get paged list of transactions")
+    @Operation(summary = "List all transactions with pagination")
     public ResponseEntity<ApiResponseDto<Page<TransactionResponseDto>>> getTransactions(
-            @ParameterObject @PageableDefault(size = 20) Pageable pageable) {
+            @ParameterObject @PageableDefault(size = 20, sort = "createdAt") Pageable pageable) {
         Page<TransactionResponseDto> page = transactionService.getTransactions(pageable);
         return ResponseEntity.ok(ApiResponseDto.ok(page));
     }

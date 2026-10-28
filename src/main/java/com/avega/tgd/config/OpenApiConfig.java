@@ -11,20 +11,11 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 /**
- * OpenAPI 3.0 and Swagger UI configuration.
- *
- * <p>Configures global API metadata, developer contact info, and registers the
- * HTTP Basic Authentication security scheme so consumers can authenticate and test
- * endpoints directly through the interactive Swagger UI interface ({@code /swagger-ui.html}).
+ * OpenAPI 3.0 configuration providing Swagger UI and Basic Auth integration.
  */
 @Configuration
 public class OpenApiConfig {
 
-    /**
-     * Constructs the custom OpenAPI specification with metadata and Basic Auth security components.
-     *
-     * @return configured {@link OpenAPI} specification bean
-     */
     @Bean
     public OpenAPI customOpenAPI() {
         final String securitySchemeName = "basicAuth";
@@ -33,8 +24,8 @@ public class OpenApiConfig {
                 .info(new Info()
                         .title("Tax Gap Detection & Compliance Validation Service")
                         .version("1.0.0")
-                        .description("Backend REST service for tax auditors to verify accuracy of financial transactions, " +
-                                "detect tax gaps, execute configurable compliance rules, manage exceptions, maintain audit logs, and produce summary reports.")
+                        .description("Backend REST service for financial transaction verification, tax gap detection, " +
+                                "compliance rules, exception management, audit logging, and reporting.")
                         .contact(new Contact().name("Abhishek Kumar").email("candidate@avega.com"))
                         .license(new License().name("Apache 2.0").url("https://spring.io/")))
                 .addSecurityItem(new SecurityRequirement().addList(securitySchemeName))
