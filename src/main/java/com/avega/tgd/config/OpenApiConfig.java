@@ -11,11 +11,20 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 /**
- * OpenAPI 3 / Swagger documentation configuration with Basic Auth security definition.
+ * OpenAPI 3.0 and Swagger UI configuration.
+ *
+ * <p>Configures global API metadata, developer contact info, and registers the
+ * HTTP Basic Authentication security scheme so consumers can authenticate and test
+ * endpoints directly through the interactive Swagger UI interface ({@code /swagger-ui.html}).
  */
 @Configuration
 public class OpenApiConfig {
 
+    /**
+     * Constructs the custom OpenAPI specification with metadata and Basic Auth security components.
+     *
+     * @return configured {@link OpenAPI} specification bean
+     */
     @Bean
     public OpenAPI customOpenAPI() {
         final String securitySchemeName = "basicAuth";

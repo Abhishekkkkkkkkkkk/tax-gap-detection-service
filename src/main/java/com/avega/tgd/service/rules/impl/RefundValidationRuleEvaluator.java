@@ -13,8 +13,25 @@ import org.springframework.stereotype.Component;
 import java.util.Optional;
 
 /**
- * Mandatory Rule (B): Refund Validation Rule
- * Refund amount must not exceed original sale amount.
+ * Mandatory Rule (B): Refund Validation Rule.
+ *
+ * <p>Business Rationale:
+ * A customer should never be credited a refund greater than their original purchase.
+ * Fraudulent or erroneous refunds erode tax bases through illegitimate input tax credits (ITC).
+ *
+ * <p>Evaluation Strategy:
+ * <ol>
+ *   <li>Non-refund transactions (SALE, EXPENSE) bypass this rule immediately.</li>
+ *   <li><b>Explicit Link:</b> If {@code originalTransactionId} is supplied, the system queries the database
+ *       to verify that the referenced transaction exists, was of type {@code SALE}, and that {@code refundAmount <= saleAmount}.</li>
+ *   <li><b>Historical Fallback:</b> If {@code originalTransactionId} is omitted, the evaluator queries the customer's
+ *       highest recorded historical {@code SALE}. If no sale exists or the refund exceeds that highest sale, an exception is flagged.</li>
+ * </ol>
+ *
+ * <p>Implementation Note / Future Scope:
+ * The current implementation evaluates the refund against the referenced single sale's amount. Tracking
+ * cumulative partial refunds against a single sale across multiple separate refund transactions can be
+ * enabled in future iterations by summing previous refunds matching {@code originalTransactionId}.
  */
 @Component
 public class RefundValidationRuleEvaluator implements TaxRuleEvaluator {
@@ -33,22 +50,31 @@ public class RefundValidationRuleEvaluator implements TaxRuleEvaluator {
         return RULE_NAME;
     }
 
+    /**
+     * Evaluates refund amounts against original sales records.
+     *
+     * @param transaction     Transaction to evaluate
+     * @param configJson      Rule configuration JSON
+     * @param defaultSeverity Fallback severity configured for the rule
+     * @return Evaluation pass/fail result
+     */
     @Override
     public RuleEvaluationResult evaluate(TransactionEntity transaction, String configJson, Severity defaultSeverity) {
+        // Non-refund transactions are exempt from refund validation
         if (transaction == null || transaction.getTransactionType() != TransactionType.REFUND) {
             return RuleEvaluationResult.pass();
         }
 
         Severity severity = defaultSeverity != null ? defaultSeverity : Severity.HIGH;
 
-        // 1. Check if original transaction ID is explicitly linked
+        // Strategy 1: Check against explicitly linked original transaction ID
         if (transaction.getOriginalTransactionId() != null && !transaction.getOriginalTransactionId().trim().isEmpty()) {
             String origTxId = transaction.getOriginalTransactionId().trim();
             Optional<TransactionEntity> originalSaleOpt = transactionRepository.findFirstByTransactionIdAndTransactionType(
                     origTxId, TransactionType.SALE);
 
             if (originalSaleOpt.isEmpty()) {
-                // If originalTransactionId cannot be found as a SALE, check general transaction id
+                // Determine whether the transaction ID was completely missing or was not a SALE
                 Optional<TransactionEntity> anyTxOpt = transactionRepository.findByTransactionId(origTxId);
                 if (anyTxOpt.isEmpty()) {
                     return RuleEvaluationResult.fail(severity,
@@ -62,6 +88,7 @@ public class RefundValidationRuleEvaluator implements TaxRuleEvaluator {
             }
 
             TransactionEntity originalSale = originalSaleOpt.get();
+            // Flag exception if refund amount exceeds original sale amount
             if (transaction.getAmount().compareTo(originalSale.getAmount()) > 0) {
                 return RuleEvaluationResult.fail(severity,
                         String.format("Refund amount %s exceeds original sale amount %s (Original Sale ID: %s)",
@@ -71,7 +98,7 @@ public class RefundValidationRuleEvaluator implements TaxRuleEvaluator {
             return RuleEvaluationResult.pass();
         }
 
-        // 2. Fallback: if no originalTransactionId is specified, check against customer's existing sales
+        // Strategy 2: Fallback when unlinked - verify customer has at least one historical sale >= refund amount
         if (transaction.getCustomerId() != null) {
             Optional<TransactionEntity> highestSaleOpt = transactionRepository
                     .findTopByCustomerIdAndTransactionTypeOrderByAmountDesc(

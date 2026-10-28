@@ -4,8 +4,17 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 
 /**
- * Summary report response for a customer's cumulative tax compliance.
- * Computes: complianceScore = 100 - (nonCompliantTransactions / totalTransactions * 100)
+ * Data Transfer Object delivering the aggregated tax compliance summary for a customer.
+ *
+ * <p>Directly satisfies Requirement 6.A ("Customer Tax Summary Report"):
+ * <ul>
+ *   <li>{@code totalAmount}: Cumulative monetary volume of all successful transactions.</li>
+ *   <li>{@code totalReportedTax}: Cumulative tax reported by the customer.</li>
+ *   <li>{@code totalExpectedTax}: Cumulative tax calculated by the system engine.</li>
+ *   <li>{@code totalTaxGap}: Cumulative variance ({@code totalExpectedTax - totalReportedTax}).</li>
+ *   <li>{@code complianceScore}: Percentage metric computed as:
+ *       <pre>complianceScore = 100 - (nonCompliantTransactions / totalTransactions * 100)</pre></li>
+ * </ul>
  */
 public class CustomerTaxSummaryDto {
 
@@ -37,8 +46,21 @@ public class CustomerTaxSummaryDto {
     }
 
     /**
-     * Calculates compliance score:
+     * Computes the customer compliance score according to the business formula:
+     * <pre>
      * complianceScore = 100 - (nonCompliantTransactions / totalTransactions * 100)
+     * </pre>
+     *
+     * <p>Edge Cases Handled:
+     * <ul>
+     *   <li>If total transactions is 0 (or negative), score is 100.00.</li>
+     *   <li>If non-compliant count equals or exceeds total count, score is clamped to 0.00 (no negative scores).</li>
+     *   <li>Maintains scale of 4 during division before rounding to 2 decimal places with {@link RoundingMode#HALF_UP}.</li>
+     * </ul>
+     *
+     * @param total        total count of transactions
+     * @param nonCompliant count of non-compliant transactions
+     * @return compliance score as a {@link BigDecimal} rounded to 2 decimal places
      */
     public static BigDecimal calculateComplianceScore(long total, long nonCompliant) {
         if (total <= 0) {

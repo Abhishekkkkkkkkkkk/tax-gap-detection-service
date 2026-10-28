@@ -17,13 +17,39 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Global exception handler providing centralized error responses and logging.
+ * Centralized REST exception handler intercepting and translating application exceptions
+ * into uniform, structured {@link ApiResponseDto} JSON error envelopes.
+ *
+ * <p>Key Responsibilities:
+ * <ul>
+ *   <li><b>Format Standardization:</b> Guarantees consistent error structures across all endpoints
+ *       with {@code success: false}, informative error messages, and optional field-level maps.</li>
+ *   <li><b>HTTP Status Code Mapping:</b>
+ *     <ul>
+ *       <li>{@code 404 NOT FOUND}: Missing domain entities ({@link ResourceNotFoundException}).</li>
+ *       <li>{@code 400 BAD REQUEST}: Payload validation errors, invalid dates, and malformed JSON
+ *           ({@link InvalidTransactionException}, {@link HttpMessageNotReadableException},
+ *           {@link MethodArgumentNotValidException}).</li>
+ *       <li>{@code 401 UNAUTHORIZED}: Bad or missing Basic Auth credentials ({@link AuthenticationException}).</li>
+ *       <li>{@code 403 FORBIDDEN}: Insufficient role authority ({@link AccessDeniedException}).</li>
+ *       <li>{@code 500 INTERNAL SERVER ERROR}: Unhandled runtime exceptions (safely masked from client).</li>
+ *     </ul>
+ *   </li>
+ *   <li><b>Date and Format Validation:</b> Directly satisfies Requirement 1 ("Invalid date formats must
+ *       be rejected") by intercepting Jackson deserialization failures.</li>
+ * </ul>
  */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
+    /**
+     * Handles missing entities, returning HTTP 404 NOT FOUND.
+     *
+     * @param ex the resource not found exception
+     * @return structured 404 response
+     */
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<ApiResponseDto<Object>> handleResourceNotFound(ResourceNotFoundException ex) {
         log.warn("Resource not found: {}", ex.getMessage());
@@ -31,6 +57,12 @@ public class GlobalExceptionHandler {
                 .body(ApiResponseDto.error(ex.getMessage()));
     }
 
+    /**
+     * Handles business and semantic transaction validation failures, returning HTTP 400 BAD REQUEST.
+     *
+     * @param ex the invalid transaction exception
+     * @return structured 400 response
+     */
     @ExceptionHandler(InvalidTransactionException.class)
     public ResponseEntity<ApiResponseDto<Object>> handleInvalidTransaction(InvalidTransactionException ex) {
         log.warn("Invalid transaction: {}", ex.getMessage());
@@ -38,6 +70,12 @@ public class GlobalExceptionHandler {
                 .body(ApiResponseDto.error(ex.getMessage()));
     }
 
+    /**
+     * Handles malformed JSON payloads and invalid date formats (e.g. non-ISO LocalDate strings).
+     *
+     * @param ex the HTTP message not readable exception
+     * @return structured 400 response detailing the parse error
+     */
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ApiResponseDto<Object>> handleJsonParseError(HttpMessageNotReadableException ex) {
         log.warn("Malformed JSON payload: {}", ex.getMessage());
@@ -49,6 +87,12 @@ public class GlobalExceptionHandler {
                 .body(ApiResponseDto.error(msg));
     }
 
+    /**
+     * Handles Jakarta Bean Validation errors ({@code @Valid}), returning field-by-field error maps.
+     *
+     * @param ex the validation exception containing binding errors
+     * @return structured 400 response with field error details
+     */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiResponseDto<Map<String, String>>> handleValidationErrors(MethodArgumentNotValidException ex) {
         Map<String, String> errors = new HashMap<>();
@@ -60,6 +104,12 @@ public class GlobalExceptionHandler {
                 .body(ApiResponseDto.error("Validation failed", errors));
     }
 
+    /**
+     * Handles RBAC authorization denials, returning HTTP 403 FORBIDDEN.
+     *
+     * @param ex the access denied exception
+     * @return structured 403 response
+     */
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ApiResponseDto<Object>> handleAccessDenied(AccessDeniedException ex) {
         log.warn("Access denied: {}", ex.getMessage());
@@ -67,6 +117,12 @@ public class GlobalExceptionHandler {
                 .body(ApiResponseDto.error("Access denied: " + ex.getMessage()));
     }
 
+    /**
+     * Handles authentication failures, returning HTTP 401 UNAUTHORIZED.
+     *
+     * @param ex the authentication exception
+     * @return structured 401 response
+     */
     @ExceptionHandler(AuthenticationException.class)
     public ResponseEntity<ApiResponseDto<Object>> handleAuthenticationException(AuthenticationException ex) {
         log.warn("Authentication failed: {}", ex.getMessage());
@@ -74,6 +130,13 @@ public class GlobalExceptionHandler {
                 .body(ApiResponseDto.error("Authentication failed: " + ex.getMessage()));
     }
 
+    /**
+     * Catch-all handler for unexpected internal exceptions, returning HTTP 500 INTERNAL SERVER ERROR.
+     * Logs the full exception stack trace for debugging while concealing internal details from clients.
+     *
+     * @param ex the unexpected exception
+     * @return structured 500 response
+     */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponseDto<Object>> handleGenericException(Exception ex) {
         log.error("Internal server error: ", ex);

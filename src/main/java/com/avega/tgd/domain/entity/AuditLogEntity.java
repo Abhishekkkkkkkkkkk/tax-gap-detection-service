@@ -6,8 +6,18 @@ import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
 /**
- * Entity maintaining an immutable audit trail of every ingestion, rule execution,
- * and tax computation performed by the service.
+ * JPA entity maintaining an append-only, immutable audit trail of system events.
+ *
+ * <p>Directly satisfies Requirement 5 ("Audit Logging"):
+ * <i>"Log every transaction ingestion, rule execution, tax computation.
+ * Each log entry must include: eventType, transactionId, timestamp, detailJson"</i>.
+ *
+ * <p>Database Indexing Strategy:
+ * <ul>
+ *   <li>{@code idx_audit_event_type}: Accelerates queries filtering by event type.</li>
+ *   <li>{@code idx_audit_transaction_id}: Enables immediate retrieval of full audit trails for a specific transaction.</li>
+ *   <li>{@code idx_audit_timestamp}: Optimizes chronological sorting and time-window audit exports.</li>
+ * </ul>
  */
 @Entity
 @Table(name = "audit_logs", indexes = {
@@ -44,6 +54,9 @@ public class AuditLogEntity {
         this.detailJson = detailJson;
     }
 
+    /**
+     * JPA lifecycle callback initializing timestamp if not set.
+     */
     @PrePersist
     public void onPrePersist() {
         if (this.timestamp == null) {

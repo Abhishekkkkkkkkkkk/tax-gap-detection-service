@@ -6,8 +6,22 @@ import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
 /**
- * Entity representing database-driven, configurable tax compliance rules.
- * Rules can be enabled/disabled dynamically and configure thresholds in JSON format.
+ * JPA entity representing a database-driven, configurable tax compliance rule.
+ *
+ * <p>Directly satisfies Requirement 3 ("Configurable Rule Engine Stored in Database"):
+ * <ul>
+ *   <li><b>Rule Persistence:</b> Rules are stored in the database with their metadata and severity level.</li>
+ *   <li><b>Dynamic JSON Configuration:</b> The {@code config_json} column stores rule parameters
+ *       (e.g., threshold limits, GST slab boundaries, unlinked refund policies) as JSON text,
+ *       allowing policy adjustments without recompiling or redeploying code.</li>
+ *   <li><b>Runtime Activation:</b> The {@code enabled} flag permits instantly toggling rules on or off.</li>
+ * </ul>
+ *
+ * <p>Indexing Strategy:
+ * <ul>
+ *   <li>{@code idx_rule_name}: Unique index preventing duplicate rule definitions.</li>
+ *   <li>{@code idx_rule_enabled}: Optimizes retrieval of active rules by {@code findByEnabledTrue()}.</li>
+ * </ul>
  */
 @Entity
 @Table(name = "tax_rules", indexes = {
@@ -53,6 +67,9 @@ public class TaxRuleEntity {
         this.configJson = configJson;
     }
 
+    /**
+     * JPA lifecycle hook setting creation and update timestamps before insertion.
+     */
     @PrePersist
     public void onPrePersist() {
         if (this.createdAt == null) {
@@ -61,6 +78,9 @@ public class TaxRuleEntity {
         this.updatedAt = LocalDateTime.now();
     }
 
+    /**
+     * JPA lifecycle hook refreshing modification timestamp on update.
+     */
     @PreUpdate
     public void onPreUpdate() {
         this.updatedAt = LocalDateTime.now();

@@ -6,8 +6,20 @@ import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
 /**
- * Entity representing an exception record generated whenever a transaction
- * fails a business tax compliance rule or exhibits a tax gap issue.
+ * JPA entity representing a compliance exception record.
+ *
+ * <p>Directly satisfies Requirement 4 ("Exception Management"):
+ * <i>"When any rule or tax calculation fails, create an exception record with:
+ * transactionId, customerId, ruleName, severity (HIGH / MEDIUM / LOW), message, timestamp"</i>.
+ *
+ * <p>Database Indexing Strategy:
+ * <ul>
+ *   <li>{@code idx_ex_transaction_id}: Enables immediate lookup of all exceptions generated for a transaction.</li>
+ *   <li>{@code idx_ex_customer_id}: Accelerates customer-level risk filtering and summary aggregation.</li>
+ *   <li>{@code idx_ex_rule_name}: Supports analytics on specific compliance rule failure rates.</li>
+ *   <li>{@code idx_ex_severity}: Enables efficient filtering and counting by severity level in SQL.</li>
+ *   <li>{@code idx_ex_timestamp}: Facilitates timeline queries and default descending sort.</li>
+ * </ul>
  */
 @Entity
 @Table(name = "exceptions", indexes = {
@@ -54,6 +66,9 @@ public class ExceptionEntity {
         this.timestamp = timestamp != null ? timestamp : LocalDateTime.now();
     }
 
+    /**
+     * JPA lifecycle callback guaranteeing timestamp initialization prior to persistence.
+     */
     @PrePersist
     public void onPrePersist() {
         if (this.timestamp == null) {

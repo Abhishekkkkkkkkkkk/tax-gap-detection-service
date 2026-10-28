@@ -20,8 +20,18 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
- * Implementation of ReportService utilizing SQL database-level aggregations
+ * Implementation of {@link ReportService} utilizing SQL database-level aggregations
  * for maximum query efficiency on relational databases.
+ *
+ * <p>Compliance Score Formula:
+ * <pre>{@code
+ *   complianceScore = 100 - (nonCompliantTransactions / totalTransactions * 100)
+ * }</pre>
+ *
+ * <p>Database Efficiency:
+ * Rather than loading all rows into Java collections and iterating in memory,
+ * this service leverages ANSI-SQL {@code GROUP BY}, {@code SUM}, {@code COUNT}, and
+ * {@code CASE WHEN} constructs in the database engine, returning lightweight interface projections.
  */
 @Service
 public class ReportServiceImpl implements ReportService {
@@ -34,6 +44,11 @@ public class ReportServiceImpl implements ReportService {
         this.exceptionRepository = exceptionRepository;
     }
 
+    /**
+     * Executes the customer aggregation query across all successfully validated transactions.
+     *
+     * @return List of mapped customer tax summary DTOs
+     */
     @Override
     @Transactional(readOnly = true)
     public List<CustomerTaxSummaryDto> getAllCustomerTaxSummaries() {
@@ -43,6 +58,13 @@ public class ReportServiceImpl implements ReportService {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * Executes the customer aggregation query for a single specified customer.
+     *
+     * @param customerId Target customer identifier
+     * @return Customer tax summary DTO
+     * @throws ResourceNotFoundException if customer has no valid transactions
+     */
     @Override
     @Transactional(readOnly = true)
     public CustomerTaxSummaryDto getCustomerTaxSummary(String customerId) {
@@ -51,14 +73,24 @@ public class ReportServiceImpl implements ReportService {
                 .orElseThrow(() -> new ResourceNotFoundException("No transactions found for customer: " + customerId));
     }
 
+    /**
+     * Compiles an exception overview report:
+     * <ol>
+     *   <li>Total exception count via {@code COUNT(*)}.</li>
+     *   <li>Exceptions grouped by severity via SQL {@code GROUP BY severity}.</li>
+     *   <li>Customer-wise exception count via SQL {@code GROUP BY customer_id}.</li>
+     * </ol>
+     *
+     * @return Combined exception summary DTO
+     */
     @Override
     @Transactional(readOnly = true)
     public ExceptionSummaryDto getExceptionSummary() {
         long totalExceptions = exceptionRepository.count();
 
-        // 1. Grouped by severity
+        // Step 1: Pre-populate EnumMap with 0 counts for every severity enum value (HIGH, MEDIUM, LOW)
+        // to guarantee all severities are present in the response even if count is 0
         Map<Severity, Long> severityCounts = new EnumMap<>(Severity.class);
-        // Initialize with zeros for each severity enum
         for (Severity s : Severity.values()) {
             severityCounts.put(s, 0L);
         }
@@ -69,7 +101,7 @@ public class ReportServiceImpl implements ReportService {
             }
         }
 
-        // 2. Grouped by customer
+        // Step 2: Query customer-wise exception counts ordered by frequency descending
         Map<String, Long> customerCounts = new LinkedHashMap<>();
         List<CustomerExceptionCountProjection> customerProjections = exceptionRepository.countGroupedByCustomer();
         for (CustomerExceptionCountProjection p : customerProjections) {
@@ -80,6 +112,10 @@ public class ReportServiceImpl implements ReportService {
         return new ExceptionSummaryDto(totalExceptions, severityCounts, customerCounts);
     }
 
+    /**
+     * Transforms database projection results into customer summary DTOs,
+     * computing the compliance score.
+     */
     private CustomerTaxSummaryDto mapToDto(CustomerTaxSummaryProjection p) {
         long total = p.getTotalTransactions() != null ? p.getTotalTransactions() : 0L;
         long nonCompliant = p.getNonCompliantCount() != null ? p.getNonCompliantCount() : 0L;

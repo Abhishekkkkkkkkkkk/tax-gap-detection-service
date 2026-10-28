@@ -5,8 +5,19 @@ import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
 /**
- * Entity representing an application user for Spring Security authentication and RBAC.
- * Prepopulated in the database with AUDITOR and ADMIN accounts.
+ * JPA entity representing an application user account for Spring Security authentication and RBAC.
+ *
+ * <p>Directly fulfills the technical requirement:
+ * <i>"Spring Security (authentication & authorization using a User table with prefilled data in DB)"</i>.
+ *
+ * <p>Features:
+ * <ul>
+ *   <li>Unique username index for rapid credential verification by {@code CustomUserDetailsService}.</li>
+ *   <li>BCrypt hashed password storage (length 255) ensuring credentials are protected at rest.</li>
+ *   <li>Authority string representation (e.g. {@code ROLE_AUDITOR}, {@code ROLE_ADMIN}) mapped directly
+ *       to Spring Security {@link org.springframework.security.core.GrantedAuthority}.</li>
+ *   <li>Account enabled toggle supporting user deactivation without data loss.</li>
+ * </ul>
  */
 @Entity
 @Table(name = "users", indexes = {
@@ -43,6 +54,9 @@ public class UserEntity {
         this.enabled = enabled;
     }
 
+    /**
+     * JPA lifecycle callback establishing creation timestamp before insertion.
+     */
     @PrePersist
     public void onPrePersist() {
         if (this.createdAt == null) {

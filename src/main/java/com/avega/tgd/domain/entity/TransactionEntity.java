@@ -10,8 +10,28 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
- * Entity representing a financial transaction, including raw validation details,
- * expected tax calculations, tax gap, and compliance status.
+ * JPA entity representing a financial transaction record throughout its compliance lifecycle.
+ *
+ * <p>Requirements Addressed:
+ * <ul>
+ *   <li><b>Requirement 1 (Transaction Fields & Storage):</b> Persists all input fields (transactionId,
+ *       date, customerId, amount, taxRate, reportedTax, transactionType) alongside raw payload,
+ *       validation status (SUCCESS / FAILURE), and failure reasons.</li>
+ *   <li><b>Requirement 2 (Tax Gap Storage):</b> Persists calculated {@code expectedTax}, {@code taxGap},
+ *       and determined {@code complianceStatus} (COMPLIANT, UNDERPAID, OVERPAID, NON_COMPLIANT).</li>
+ * </ul>
+ *
+ * <p>Database Indexing Strategy:
+ * <ul>
+ *   <li>{@code idx_tx_transaction_id}: Unique index ensuring external identifier uniqueness and fast lookups.</li>
+ *   <li>{@code idx_tx_customer_id}: Speeds up customer history queries and SQL aggregation reports.</li>
+ *   <li>{@code idx_tx_compliance_status}: Optimizes conditional compliance queries and counts.</li>
+ *   <li>{@code idx_tx_date}: Facilitates temporal range filtering and audit reporting.</li>
+ * </ul>
+ *
+ * <p>Precision & Scale Rationale:
+ * Financial values use {@code precision = 18, scale = 2} to eliminate binary floating-point drift.
+ * Tax rates use {@code precision = 8, scale = 4} to support fractional percentage rates.
  */
 @Entity
 @Table(name = "transactions", indexes = {
@@ -80,6 +100,9 @@ public class TransactionEntity {
     public TransactionEntity() {
     }
 
+    /**
+     * JPA lifecycle callback establishing creation and modification timestamps prior to insertion.
+     */
     @PrePersist
     public void onPrePersist() {
         if (this.createdAt == null) {
@@ -88,6 +111,9 @@ public class TransactionEntity {
         this.updatedAt = LocalDateTime.now();
     }
 
+    /**
+     * JPA lifecycle callback updating modification timestamp on entity updates.
+     */
     @PreUpdate
     public void onPreUpdate() {
         this.updatedAt = LocalDateTime.now();

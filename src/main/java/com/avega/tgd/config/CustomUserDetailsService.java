@@ -12,7 +12,20 @@ import org.springframework.stereotype.Service;
 import java.util.Collections;
 
 /**
- * Custom UserDetailsService that resolves authentication credentials and authorities from the User database table.
+ * Custom {@link UserDetailsService} bridging Spring Security's authentication provider
+ * with the application's database-backed user management.
+ *
+ * <p>Fulfills the technical requirement:
+ * <i>"Spring Security (authentication & authorization using a User table with prefilled data in DB)"</i>.
+ *
+ * <p>When an incoming HTTP request presents Basic Authentication credentials:
+ * <ol>
+ *   <li>Spring Security invokes {@link #loadUserByUsername(String)}.</li>
+ *   <li>The service queries {@link UserRepository} for the user record.</li>
+ *   <li>The BCrypt hashed password and granted role authorities (e.g. {@code ROLE_AUDITOR})
+ *       are wrapped into a Spring Security {@link UserDetails} principal.</li>
+ *   <li>The authentication manager validates the provided password against the hash.</li>
+ * </ol>
  */
 @Service
 public class CustomUserDetailsService implements UserDetailsService {
@@ -23,6 +36,13 @@ public class CustomUserDetailsService implements UserDetailsService {
         this.userRepository = userRepository;
     }
 
+    /**
+     * Loads a user by their unique username from the database.
+     *
+     * @param username the username to authenticate
+     * @return a populated {@link UserDetails} object containing credentials and granted authorities
+     * @throws UsernameNotFoundException if no user exists with the requested username
+     */
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         UserEntity user = userRepository.findByUsername(username)
@@ -32,9 +52,9 @@ public class CustomUserDetailsService implements UserDetailsService {
                 user.getUsername(),
                 user.getPassword(),
                 user.isEnabled(),
-                true,
-                true,
-                true,
+                true, // accountNonExpired
+                true, // credentialsNonExpired
+                true, // accountNonLocked
                 Collections.singletonList(new SimpleGrantedAuthority(user.getRole()))
         );
     }

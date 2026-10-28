@@ -32,13 +32,18 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * Implementation of TransactionService handling end-to-end ingestion pipeline:
- * 1. Data syntax and structural validation
- * 2. Raw payload and validation status persistence
- * 3. Tax gap computation and compliance status assignment
- * 4. Active rule engine evaluation
- * 5. Exception record generation
- * 6. Audit logging at each lifecycle stage
+ * Core implementation of {@link TransactionService} coordinating the transaction lifecycle:
+ *
+ * <p>Architecture &amp; Design Decisions:
+ * <ul>
+ *   <li><b>Fault Isolation:</b> Batches are processed on a per-transaction basis. If record #3 fails syntax
+ *       validation, it is recorded as a FAILURE with diagnostics, while records #1, #2, and #4 complete normally.</li>
+ *   <li><b>Audit Compliance:</b> The raw request body is retained in {@code raw_payload} to provide an immutable
+ *       forensic audit trail should an auditor need to inspect what the customer originally sent.</li>
+ *   <li><b>Sequential Rule Execution:</b> The transaction and its tax gap calculations are flushed to the
+ *       database before running compliance rules, ensuring dependent rules (such as refund validation) can query
+ *       and inspect existing transaction records.</li>
+ * </ul>
  */
 @Service
 public class TransactionServiceImpl implements TransactionService {
@@ -66,10 +71,17 @@ public class TransactionServiceImpl implements TransactionService {
         this.objectMapper = objectMapper;
     }
 
+    /**
+     * Ingests, validates, computes tax gap, evaluates active rules, logs audit events,
+     * and persists the transaction entity.
+     *
+     * @param dto Incoming transaction request payload
+     * @return Response DTO with full validation and calculation details
+     */
     @Override
     @Transactional
     public TransactionResponseDto processTransaction(TransactionRequestDto dto) {
-        // Serialize raw payload for persistence
+        // Step 1: Capture the exact verbatim raw payload for non-repudiation and forensic audit
         String rawJson;
         try {
             rawJson = objectMapper.writeValueAsString(dto);
@@ -77,9 +89,12 @@ public class TransactionServiceImpl implements TransactionService {
             rawJson = String.valueOf(dto);
         }
 
+        // Step 2: Validate structural syntax and required business fields
         List<String> validationErrors = validateTransactionDto(dto);
         boolean isValid = validationErrors.isEmpty();
 
+        // Fallback: If transactionId was omitted in an invalid request, generate a synthetic ID
+        // to prevent database UNIQUE constraint violations while still persisting the failed attempt.
         String txId = dto.getTransactionId();
         if (txId == null || txId.trim().isEmpty()) {
             txId = "UNASSIGNED-" + UUID.randomUUID();
@@ -97,7 +112,7 @@ public class TransactionServiceImpl implements TransactionService {
         entity.setRawPayload(rawJson);
 
         if (!isValid) {
-            // Validation failed
+            // Validation failed: persist failed transaction record along with specific failure reasons
             String reasons = String.join("; ", validationErrors);
             entity.setValidationStatus(ValidationStatus.FAILURE);
             entity.setFailureReasons(reasons);
@@ -105,14 +120,14 @@ public class TransactionServiceImpl implements TransactionService {
 
             TransactionEntity savedFailed = transactionRepository.save(entity);
 
-            // 1. Audit Log for failed ingestion
+            // Audit log: record failed ingestion milestone with full diagnostic errors
             Map<String, Object> ingestionAudit = new HashMap<>();
             ingestionAudit.put("status", "VALIDATION_FAILURE");
             ingestionAudit.put("errors", validationErrors);
             ingestionAudit.put("raw", rawJson);
             auditLogService.logEvent(AuditEventType.INGESTION, txId, ingestionAudit);
 
-            // 2. Create exception record
+            // Exception record: create an auditor-visible exception record for the syntax failure
             exceptionService.createException(
                     txId,
                     dto.getCustomerId() != null ? dto.getCustomerId() : "UNKNOWN",
@@ -124,11 +139,11 @@ public class TransactionServiceImpl implements TransactionService {
             return TransactionResponseDto.fromEntity(savedFailed);
         }
 
-        // Validation succeeded
+        // Validation passed: mark transaction as successful
         entity.setValidationStatus(ValidationStatus.SUCCESS);
         entity.setFailureReasons(null);
 
-        // 1. Audit Log for successful ingestion
+        // Audit log: record successful ingestion milestone
         Map<String, Object> ingestionAudit = new HashMap<>();
         ingestionAudit.put("status", "SUCCESS");
         ingestionAudit.put("amount", dto.getAmount());
@@ -136,7 +151,7 @@ public class TransactionServiceImpl implements TransactionService {
         ingestionAudit.put("reportedTax", dto.getReportedTax());
         auditLogService.logEvent(AuditEventType.INGESTION, txId, ingestionAudit);
 
-        // 2. Tax Gap Calculation Engine
+        // Step 3: Compute expected tax, tax gap, and compliance classification
         TaxGapResult taxGapResult = taxGapEngineService.evaluateTransaction(entity);
 
         Map<String, Object> taxAudit = new HashMap<>();
@@ -147,7 +162,7 @@ public class TransactionServiceImpl implements TransactionService {
         taxAudit.put("notes", taxGapResult.getNotes());
         auditLogService.logEvent(AuditEventType.TAX_COMPUTATION, txId, taxAudit);
 
-        // If compliance status is underpaid or non-compliant, create tax calculation exception
+        // If compliance indicates underpayment or missing tax, generate an audit exception
         if (taxGapResult.getComplianceStatus() == ComplianceStatus.UNDERPAID) {
             exceptionService.createException(
                     txId,
@@ -167,15 +182,22 @@ public class TransactionServiceImpl implements TransactionService {
             );
         }
 
-        // Save transaction with tax gap results before running rules (rules may query DB for sales)
+        // Persist transaction entity before executing rules so that subsequent rules
+        // (such as RefundValidationRule looking up sales history) can discover this or related records.
         TransactionEntity savedTx = transactionRepository.save(entity);
 
-        // 3. Configurable Rule Engine execution
+        // Step 4: Execute all enabled compliance rules from the database
         ruleEngineService.executeRules(savedTx);
 
         return TransactionResponseDto.fromEntity(savedTx);
     }
 
+    /**
+     * Iterates over batch transactions, isolating errors so invalid records do not fail the batch.
+     *
+     * @param transactionRequests List of transaction request objects
+     * @return Aggregated response summarizing total, successful, and failed counts
+     */
     @Override
     @Transactional
     public BatchUploadResponseDto processBatch(List<TransactionRequestDto> transactionRequests) {
@@ -198,6 +220,7 @@ public class TransactionServiceImpl implements TransactionService {
                     totalFailed++;
                 }
             } catch (Exception e) {
+                // Defensive catch-all to prevent unhandled runtime exceptions from crashing the batch
                 log.error("Unexpected error processing transaction {}: ", request.getTransactionId(), e);
                 totalFailed++;
                 TransactionResponseDto errorDto = new TransactionResponseDto();
@@ -211,6 +234,13 @@ public class TransactionServiceImpl implements TransactionService {
         return new BatchUploadResponseDto(totalReceived, totalSuccess, totalFailed, results);
     }
 
+    /**
+     * Fetches a transaction entity by its unique business transaction ID.
+     *
+     * @param transactionId Unique business transaction ID
+     * @return The transaction entity
+     * @throws ResourceNotFoundException if no transaction exists with the given ID
+     */
     @Override
     @Transactional(readOnly = true)
     public TransactionEntity getByTransactionId(String transactionId) {
@@ -218,6 +248,12 @@ public class TransactionServiceImpl implements TransactionService {
                 .orElseThrow(() -> new ResourceNotFoundException("Transaction not found: " + transactionId));
     }
 
+    /**
+     * Retrieves transactions with pagination and sorting.
+     *
+     * @param pageable Pagination and sorting criteria
+     * @return Paged DTOs
+     */
     @Override
     @Transactional(readOnly = true)
     public Page<TransactionResponseDto> getTransactions(Pageable pageable) {
@@ -225,7 +261,18 @@ public class TransactionServiceImpl implements TransactionService {
     }
 
     /**
-     * Validates required fields, date presence, amount > 0, tax rate, and transaction type.
+     * Enforces domain validation rules:
+     * <ul>
+     *   <li>{@code transactionId} must not be blank.</li>
+     *   <li>{@code date} must be present and parseable.</li>
+     *   <li>{@code customerId} must not be blank.</li>
+     *   <li>{@code amount} must be strictly greater than zero.</li>
+     *   <li>{@code taxRate} must be non-negative.</li>
+     *   <li>{@code transactionType} must be one of SALE, REFUND, or EXPENSE.</li>
+     * </ul>
+     *
+     * @param dto Transaction DTO to validate
+     * @return List of error message strings (empty if valid)
      */
     private List<String> validateTransactionDto(TransactionRequestDto dto) {
         List<String> errors = new ArrayList<>();

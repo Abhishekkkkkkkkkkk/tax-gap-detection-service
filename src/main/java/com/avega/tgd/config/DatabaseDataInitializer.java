@@ -14,7 +14,28 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Initializes default database records for Users and Mandatory Tax Rules on application startup.
+ * Application startup initializer seeding essential default records into the database.
+ *
+ * <p>Implements {@link CommandLineRunner} to execute immediately after the Spring application
+ * context is fully bootstrapped.
+ *
+ * <p>Key Responsibilities:
+ * <ul>
+ *   <li><b>Security User Seeding:</b> Ensures the {@code users} table is prefilled with standard
+ *       accounts (auditor and admin) with BCrypt-hashed passwords, fulfilling the requirement:
+ *       <i>"Spring Security (authentication & authorization using a User table with prefilled data in DB)"</i>.</li>
+ *   <li><b>Mandatory Rule Seeding:</b> Automatically provisions the three mandatory compliance rules
+ *       specified in Requirement 3:
+ *     <ol>
+ *       <li>{@code HIGH_VALUE_TRANSACTION}: Flags transactions exceeding threshold (100,000.00).</li>
+ *       <li>{@code REFUND_VALIDATION}: Validates refund amounts against original sales.</li>
+ *       <li>{@code GST_SLAB_VIOLATION}: Enforces minimum tax rate (18%) for high-bracket amounts (50,000.00).</li>
+ *     </ol>
+ *   </li>
+ *   <li><b>Idempotency:</b> Employs {@code existsByUsername} and {@code existsByRuleName} existence checks
+ *       before persisting, making the initializer completely safe across multiple application restarts
+ *       and compatible with persistent relational databases (PostgreSQL, MySQL, etc.).</li>
+ * </ul>
  */
 @Component
 public class DatabaseDataInitializer implements CommandLineRunner {
@@ -33,6 +54,11 @@ public class DatabaseDataInitializer implements CommandLineRunner {
         this.passwordEncoder = passwordEncoder;
     }
 
+    /**
+     * Entry point executed on Spring Boot application startup.
+     *
+     * @param args command-line arguments passed to the application
+     */
     @Override
     @Transactional
     public void run(String... args) {
@@ -40,6 +66,9 @@ public class DatabaseDataInitializer implements CommandLineRunner {
         seedTaxRules();
     }
 
+    /**
+     * Seeds initial user accounts for RBAC authentication if they do not already exist.
+     */
     private void seedUsers() {
         if (!userRepository.existsByUsername("auditor")) {
             UserEntity auditor = new UserEntity(
@@ -64,6 +93,9 @@ public class DatabaseDataInitializer implements CommandLineRunner {
         }
     }
 
+    /**
+     * Seeds the three mandatory compliance rules required by Requirement 3 with their JSON configurations.
+     */
     private void seedTaxRules() {
         // (A) High-Value Transaction Rule
         if (!taxRuleRepository.existsByRuleName("HIGH_VALUE_TRANSACTION")) {

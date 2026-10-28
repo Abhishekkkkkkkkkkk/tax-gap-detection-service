@@ -15,13 +15,22 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
- * Controller providing identity and role inspection for authenticated sessions.
+ * REST controller providing identity verification and role introspection for active sessions.
+ *
+ * <p>Enables frontends, audit dashboards, and API clients to inspect the current
+ * security principal and verified authorities without performing mutating actions.
  */
 @RestController
 @RequestMapping("/api/v1/auth")
 @Tag(name = "Authentication", description = "Endpoints for inspecting authenticated session details")
 public class AuthController {
 
+    /**
+     * Inspects the current {@link Authentication} token in the Spring Security context.
+     *
+     * @param authentication the active security principal injected by Spring Security
+     * @return HTTP 200 OK containing username, assigned roles, and authentication status
+     */
     @GetMapping("/me")
     @Operation(summary = "Get current authenticated user info and roles")
     public ResponseEntity<ApiResponseDto<Map<String, Object>>> getCurrentUser(Authentication authentication) {
