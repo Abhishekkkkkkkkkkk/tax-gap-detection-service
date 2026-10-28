@@ -540,6 +540,8 @@ http://localhost:8080/swagger-ui.html
 
 ## Design & Architecture Deep-Dive
 
+> 📄 **Dedicated Architecture Document:** A complete, 1–2 page engineering design rationale is available in [`docs/ARCHITECTURE_DESIGN.md`](docs/ARCHITECTURE_DESIGN.md).
+
 ### 1. Ingestion Pipeline & Error Isolation
 Batch transaction uploads are designed for **error isolation**. When an individual transaction fails syntactic validation (e.g., negative amount, unparseable date), the pipeline does not abort the entire batch. Instead:
 1. The failed transaction is logged to `transactions` with status `FAILURE` and full error diagnostics in `failure_reasons`.
