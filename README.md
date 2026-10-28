@@ -111,6 +111,8 @@ The service strictly adheres to the clean **Layered Architecture**:
 
 ## Database Schema & ER Diagram
 
+![Database Schema Diagram](docs/images/database_schema_diagram.svg)
+
 ```mermaid
 erDiagram
     USERS {
@@ -347,6 +349,8 @@ docker compose up -d
 ## Test Coverage Report
 
 The project enforces automated test coverage verification via `jacoco-maven-plugin`.
+
+![JaCoCo Test Coverage Report](docs/images/test_coverage_report.png)
 
 ### Coverage Summary
 ```

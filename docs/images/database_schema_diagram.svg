@@ -1,0 +1,154 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1150 780" width="100%" height="100%" style="background-color: #0d1117; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+  <defs>
+    <linearGradient id="primaryGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1f6feb"/>
+      <stop offset="100%" stop-color="#094bb2"/>
+    </linearGradient>
+    <linearGradient id="purpleGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#8957e5"/>
+      <stop offset="100%" stop-color="#5522b0"/>
+    </linearGradient>
+    <linearGradient id="greenGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#238636"/>
+      <stop offset="100%" stop-color="#196325"/>
+    </linearGradient>
+    <linearGradient id="orangeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#d97706"/>
+      <stop offset="100%" stop-color="#9a4904"/>
+    </linearGradient>
+    <linearGradient id="cardBg" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#161b22"/>
+      <stop offset="100%" stop-color="#0d1117"/>
+    </linearGradient>
+    <filter id="shadow" x="-5%" y="-5%" width="110%" height="110%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#000000" flood-opacity="0.6"/>
+    </filter>
+  </defs>
+
+  <!-- Title Banner -->
+  <text x="575" y="42" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle" letter-spacing="1">TAX GAP DETECTION &amp; COMPLIANCE VALIDATION SERVICE</text>
+  <text x="575" y="68" font-size="14" fill="#8b949e" text-anchor="middle">Relational Database Schema &amp; Entity Relationship Diagram</text>
+
+  <!-- TABLE 1: TRANSACTIONS (Center / Main Table) -->
+  <g transform="translate(420, 100)" filter="url(#shadow)">
+    <rect width="320" height="490" rx="8" fill="url(#cardBg)" stroke="#30363d" stroke-width="1.5"/>
+    <path d="M 0 8 Q 0 0 8 0 L 312 0 Q 320 0 320 8 L 320 38 L 0 38 Z" fill="url(#primaryGrad)"/>
+    <text x="16" y="24" font-size="14" font-weight="bold" fill="#ffffff">transactions</text>
+    <text x="304" y="24" font-size="11" fill="#e6edf3" text-anchor="end">TABLE [Core]</text>
+    
+    <!-- Columns -->
+    <g font-size="12" fill="#c9d1d9" transform="translate(16, 58)">
+      <text y="0" font-weight="bold" fill="#58a6ff">PK  id</text><text x="288" y="0" text-anchor="end" fill="#8b949e">BIGINT AUTO_INC</text>
+      <text y="24" font-weight="bold" fill="#79c0ff">UK  transaction_id</text><text x="288" y="24" text-anchor="end" fill="#8b949e">VARCHAR(100)</text>
+      <text y="48">    transaction_date</text><text x="288" y="48" text-anchor="end" fill="#8b949e">DATE</text>
+      <text y="72" font-weight="bold" fill="#d2a8ff">IDX customer_id</text><text x="288" y="72" text-anchor="end" fill="#8b949e">VARCHAR(100)</text>
+      <text y="96">    amount</text><text x="288" y="96" text-anchor="end" fill="#8b949e">DECIMAL(18,2)</text>
+      <text y="120">    tax_rate</text><text x="288" y="120" text-anchor="end" fill="#8b949e">DECIMAL(8,4)</text>
+      <text y="144">    reported_tax</text><text x="288" y="144" text-anchor="end" fill="#8b949e">DECIMAL(18,2)</text>
+      <text y="168">    transaction_type</text><text x="288" y="168" text-anchor="end" fill="#8b949e">VARCHAR(20)</text>
+      <text y="192">    original_transaction_id</text><text x="288" y="192" text-anchor="end" fill="#8b949e">VARCHAR(100)</text>
+      <text y="216">    validation_status</text><text x="288" y="216" text-anchor="end" fill="#8b949e">VARCHAR(20)</text>
+      <text y="240">    failure_reasons</text><text x="288" y="240" text-anchor="end" fill="#8b949e">TEXT</text>
+      <text y="264">    raw_payload</text><text x="288" y="264" text-anchor="end" fill="#8b949e">TEXT</text>
+      <text y="288">    expected_tax</text><text x="288" y="288" text-anchor="end" fill="#8b949e">DECIMAL(18,2)</text>
+      <text y="312">    tax_gap</text><text x="288" y="312" text-anchor="end" fill="#8b949e">DECIMAL(18,2)</text>
+      <text y="336" font-weight="bold" fill="#d2a8ff">IDX compliance_status</text><text x="288" y="336" text-anchor="end" fill="#8b949e">VARCHAR(20)</text>
+      <text y="360">    created_at</text><text x="288" y="360" text-anchor="end" fill="#8b949e">DATETIME</text>
+      <text y="384">    updated_at</text><text x="288" y="384" text-anchor="end" fill="#8b949e">DATETIME</text>
+    </g>
+  </g>
+
+  <!-- TABLE 2: EXCEPTIONS (Right of Transactions) -->
+  <g transform="translate(800, 100)" filter="url(#shadow)">
+    <rect width="300" height="270" rx="8" fill="url(#cardBg)" stroke="#30363d" stroke-width="1.5"/>
+    <path d="M 0 8 Q 0 0 8 0 L 292 0 Q 300 0 300 8 L 300 38 L 0 38 Z" fill="url(#purpleGrad)"/>
+    <text x="16" y="24" font-size="14" font-weight="bold" fill="#ffffff">exceptions</text>
+    <text x="284" y="24" font-size="11" fill="#e6edf3" text-anchor="end">TABLE [Violations]</text>
+    <g font-size="12" fill="#c9d1d9" transform="translate(16, 58)">
+      <text y="0" font-weight="bold" fill="#58a6ff">PK  id</text><text x="268" y="0" text-anchor="end" fill="#8b949e">BIGINT AUTO_INC</text>
+      <text y="24" font-weight="bold" fill="#79c0ff">FK  transaction_id</text><text x="268" y="24" text-anchor="end" fill="#8b949e">VARCHAR(100)</text>
+      <text y="48" font-weight="bold" fill="#d2a8ff">IDX customer_id</text><text x="268" y="48" text-anchor="end" fill="#8b949e">VARCHAR(100)</text>
+      <text y="72" font-weight="bold" fill="#d2a8ff">IDX rule_name</text><text x="268" y="72" text-anchor="end" fill="#8b949e">VARCHAR(100)</text>
+      <text y="96" font-weight="bold" fill="#d2a8ff">IDX severity</text><text x="268" y="96" text-anchor="end" fill="#8b949e">VARCHAR(20)</text>
+      <text y="120">    message</text><text x="268" y="120" text-anchor="end" fill="#8b949e">VARCHAR(1000)</text>
+      <text y="144" font-weight="bold" fill="#d2a8ff">IDX timestamp</text><text x="268" y="144" text-anchor="end" fill="#8b949e">DATETIME</text>
+    </g>
+  </g>
+
+  <!-- TABLE 3: AUDIT_LOGS (Right Bottom) -->
+  <g transform="translate(800, 410)" filter="url(#shadow)">
+    <rect width="300" height="230" rx="8" fill="url(#cardBg)" stroke="#30363d" stroke-width="1.5"/>
+    <path d="M 0 8 Q 0 0 8 0 L 292 0 Q 300 0 300 8 L 300 38 L 0 38 Z" fill="url(#greenGrad)"/>
+    <text x="16" y="24" font-size="14" font-weight="bold" fill="#ffffff">audit_logs</text>
+    <text x="284" y="24" font-size="11" fill="#e6edf3" text-anchor="end">TABLE [Immutable]</text>
+    <g font-size="12" fill="#c9d1d9" transform="translate(16, 58)">
+      <text y="0" font-weight="bold" fill="#58a6ff">PK  id</text><text x="268" y="0" text-anchor="end" fill="#8b949e">BIGINT AUTO_INC</text>
+      <text y="24" font-weight="bold" fill="#d2a8ff">IDX event_type</text><text x="268" y="24" text-anchor="end" fill="#8b949e">VARCHAR(30)</text>
+      <text y="48" font-weight="bold" fill="#79c0ff">FK  transaction_id</text><text x="268" y="48" text-anchor="end" fill="#8b949e">VARCHAR(100)</text>
+      <text y="72" font-weight="bold" fill="#d2a8ff">IDX timestamp</text><text x="268" y="72" text-anchor="end" fill="#8b949e">DATETIME</text>
+      <text y="96">    detail_json</text><text x="268" y="96" text-anchor="end" fill="#8b949e">TEXT</text>
+    </g>
+  </g>
+
+  <!-- TABLE 4: TAX_RULES (Left of Transactions) -->
+  <g transform="translate(50, 100)" filter="url(#shadow)">
+    <rect width="310" height="270" rx="8" fill="url(#cardBg)" stroke="#30363d" stroke-width="1.5"/>
+    <path d="M 0 8 Q 0 0 8 0 L 302 0 Q 310 0 310 8 L 310 38 L 0 38 Z" fill="url(#orangeGrad)"/>
+    <text x="16" y="24" font-size="14" font-weight="bold" fill="#ffffff">tax_rules</text>
+    <text x="294" y="24" font-size="11" fill="#e6edf3" text-anchor="end">TABLE [Configurable]</text>
+    <g font-size="12" fill="#c9d1d9" transform="translate(16, 58)">
+      <text y="0" font-weight="bold" fill="#58a6ff">PK  id</text><text x="278" y="0" text-anchor="end" fill="#8b949e">BIGINT AUTO_INC</text>
+      <text y="24" font-weight="bold" fill="#79c0ff">UK  rule_name</text><text x="278" y="24" text-anchor="end" fill="#8b949e">VARCHAR(100)</text>
+      <text y="48">    description</text><text x="278" y="48" text-anchor="end" fill="#8b949e">VARCHAR(500)</text>
+      <text y="72" font-weight="bold" fill="#d2a8ff">IDX enabled</text><text x="278" y="72" text-anchor="end" fill="#8b949e">BOOLEAN</text>
+      <text y="96">    severity</text><text x="278" y="96" text-anchor="end" fill="#8b949e">VARCHAR(20)</text>
+      <text y="120">    config_json</text><text x="278" y="120" text-anchor="end" fill="#8b949e">TEXT (JSON)</text>
+      <text y="144">    created_at</text><text x="278" y="144" text-anchor="end" fill="#8b949e">DATETIME</text>
+      <text y="168">    updated_at</text><text x="278" y="168" text-anchor="end" fill="#8b949e">DATETIME</text>
+    </g>
+  </g>
+
+  <!-- TABLE 5: USERS (Left Bottom) -->
+  <g transform="translate(50, 410)" filter="url(#shadow)">
+    <rect width="310" height="230" rx="8" fill="url(#cardBg)" stroke="#30363d" stroke-width="1.5"/>
+    <path d="M 0 8 Q 0 0 8 0 L 302 0 Q 310 0 310 8 L 310 38 L 0 38 Z" fill="#30363d"/>
+    <text x="16" y="24" font-size="14" font-weight="bold" fill="#ffffff">users</text>
+    <text x="294" y="24" font-size="11" fill="#e6edf3" text-anchor="end">TABLE [Security RBAC]</text>
+    <g font-size="12" fill="#c9d1d9" transform="translate(16, 58)">
+      <text y="0" font-weight="bold" fill="#58a6ff">PK  id</text><text x="278" y="0" text-anchor="end" fill="#8b949e">BIGINT AUTO_INC</text>
+      <text y="24" font-weight="bold" fill="#79c0ff">UK  username</text><text x="278" y="24" text-anchor="end" fill="#8b949e">VARCHAR(50)</text>
+      <text y="48">    password</text><text x="278" y="48" text-anchor="end" fill="#8b949e">VARCHAR(255) [BCrypt]</text>
+      <text y="72">    role</text><text x="278" y="72" text-anchor="end" fill="#8b949e">VARCHAR(50)</text>
+      <text y="96">    enabled</text><text x="278" y="96" text-anchor="end" fill="#8b949e">BOOLEAN</text>
+      <text y="120">    created_at</text><text x="278" y="120" text-anchor="end" fill="#8b949e">DATETIME</text>
+    </g>
+  </g>
+
+  <!-- RELATIONSHIP CONNECTORS -->
+  <!-- transactions -> exceptions (1:N) -->
+  <path d="M 740 180 L 800 180" stroke="#58a6ff" stroke-width="2" stroke-dasharray="4 2"/>
+  <circle cx="745" cy="180" r="3" fill="#58a6ff"/>
+  <polygon points="798,176 806,180 798,184" fill="#58a6ff"/>
+  <text x="770" y="172" font-size="10" fill="#8b949e" text-anchor="middle">1 : N</text>
+
+  <!-- transactions -> audit_logs (1:N) -->
+  <path d="M 740 480 L 800 480" stroke="#3fb950" stroke-width="2" stroke-dasharray="4 2"/>
+  <circle cx="745" cy="480" r="3" fill="#3fb950"/>
+  <polygon points="798,476 806,480 798,484" fill="#3fb950"/>
+  <text x="770" y="472" font-size="10" fill="#8b949e" text-anchor="middle">1 : N</text>
+
+  <!-- tax_rules -> exceptions (1:N logical) -->
+  <path d="M 360 210 Q 390 210 390 140 Q 390 80 575 80 Q 770 80 770 210 L 800 210" stroke="#d29922" stroke-width="1.5" stroke-dasharray="4 2" fill="none"/>
+  <polygon points="798,206 806,210 798,214" fill="#d29922"/>
+  <text x="575" y="74" font-size="10" fill="#d29922" text-anchor="middle">rules flag exceptions (1 : N via rule_name)</text>
+
+  <!-- Legend at Bottom -->
+  <g transform="translate(180, 680)" font-size="12" fill="#8b949e">
+    <rect width="790" height="50" rx="6" fill="#161b22" stroke="#30363d"/>
+    <text x="20" y="30" font-weight="bold" fill="#ffffff">LEGEND:</text>
+    <text x="90" y="30" fill="#58a6ff">PK = Primary Key</text>
+    <text x="230" y="30" fill="#79c0ff">UK = Unique Key</text>
+    <text x="360" y="30" fill="#d2a8ff">IDX = Database B-Tree Index</text>
+    <text x="570" y="30" fill="#e6edf3">---&gt; = Foreign Reference (1:N)</text>
+  </g>
+</svg>
