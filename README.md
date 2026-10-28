@@ -2,214 +2,348 @@
 
 [![Java 17](https://img.shields.io/badge/Java-17-orange.svg)](https://openjdk.org/projects/jdk/17/)
 [![Spring Boot 3.3.4](https://img.shields.io/badge/Spring%20Boot-3.3.4-brightgreen.svg)](https://spring.io/projects/spring-boot)
-[![Tests Passed](https://img.shields.io/badge/Tests-49%20Passed-success.svg)](target/site/jacoco/index.html)
-[![Line Coverage](https://img.shields.io/badge/Line%20Coverage-82.73%25-brightgreen.svg)](target/site/jacoco/index.html)
+[![Tests Passed](https://img.shields.io/badge/Tests-49%20Passed-success.svg)](#test-coverage-report)
+[![Line Coverage](https://img.shields.io/badge/Line%20Coverage-82.73%25-brightgreen.svg)](#test-coverage-report)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
-> **Candidate / Author:** Abhishek Kumar  
+> **Candidate / Developer:** Abhishek Kumar  
 > **Repository:** [https://github.com/Abhishekkkkkkkkkkk/tax-gap-detection-service](https://github.com/Abhishekkkkkkkkkkk/tax-gap-detection-service)  
-> **Assignment Deliverable:** Backend Development Assessment (Spring Boot & REST APIs)
+> **Assessment Deliverable:** Backend Development Assessment (Spring Boot & REST APIs)
 
 ---
 
-## What is This Service?
+## Overview
 
-When companies file their taxes, discrepancies frequently arise between what they self-report and what statutory tax schedules require. Some are harmless rounding differences; others are due to incorrect tax slabs, fraudulent refund claims, or unreported high-value sales.
+This repository contains my submission for the Tax Gap Detection & Compliance Validation Service technical assessment.
 
-The **Tax Gap Detection & Compliance Validation Service** is a Spring Boot backend application built for tax auditors to:
-1. **Ingest financial transactions** in bulk with fault isolation (one malformed record won't crash the batch).
-2. **Compute mathematical tax gaps** (`expectedTax - reportedTax`) with arbitrary-precision arithmetic and tolerance boundaries.
-3. **Run database-driven compliance rules** that can be toggled and reconfigured via JSON without redeploying code.
-4. **Log an unalterable audit trail** using autonomous database transactions (`REQUIRES_NEW`).
-5. **Manage compliance exceptions** with multi-attribute dynamic filtering.
-6. **Generate real-time summary reports** powered by high-performance SQL push-down aggregations.
+The service is a Spring Boot application built to process financial transactions in bulk, detect discrepancies between reported and statutory tax amounts, execute configurable compliance rules, preserve an immutable audit trail, and serve real-time aggregation reports.
+
+### Key Capabilities
+- **Batch & Single Transaction Ingestion:** Ingests transaction records with per-record fault isolation. Malformed records fail individually without aborting the batch, and raw payloads are stored for forensic auditability.
+- **Precision Tax Gap Calculation:** Evaluates `taxGap = expectedTax - reportedTax` using arbitrary-precision arithmetic (`BigDecimal`, `HALF_UP`) with a $\pm 1.00$ tolerance boundary to avoid false positives on legitimate rounding differences.
+- **Dynamic Rule Engine (Strategy Pattern):** Evaluates pluggable compliance rules (`HIGH_VALUE_TRANSACTION`, `REFUND_VALIDATION`, `GST_SLAB_VIOLATION`). Active rules and threshold configurations are stored in the database and can be toggled or reconfigured via REST APIs without redeploying code.
+- **Autonomous Audit Trail:** Logs ingestion events, tax calculations, and rule evaluations in independent physical database transactions (`REQUIRES_NEW`), ensuring the audit log is preserved even if the parent business transaction fails.
+- **Exception Filtering:** Allows auditors to query compliance exceptions dynamically by severity, customer ID, rule name, and date range with pagination.
+- **SQL-Level Aggregation Reports:** Uses JPQL `GROUP BY` and conditional `CASE` expressions with Spring Data interface projections to compute customer tax summaries and executive exception metrics directly inside the database engine.
 
 ---
 
 ## Table of Contents
-1. [How to Run the Application (Quick Start)](#how-to-run-the-application-quick-start)
-2. [Database Setup Instructions](#database-setup-instructions)
-3. [Sample cURL & Postman Calls](#sample-curl--postman-calls)
-4. [Sample Batch Upload JSON](#sample-batch-upload-json)
-5. [Database Schema & ER Diagram](#database-schema--er-diagram)
-6. [Test Coverage Report (82.73% Line Coverage)](#test-coverage-report-8273-line-coverage)
-7. [Architecture & Design Explanation](#architecture--design-explanation)
-8. [Spring Security & Pre-Seeded Users](#spring-security--pre-seeded-users)
-9. [Running the Test Suite](#running-the-test-suite)
+1. [Technology Stack](#technology-stack)
+2. [How to Run the Application](#how-to-run-the-application)
+3. [Database Setup & Configuration](#database-setup--configuration)
+4. [Authentication & Security Credentials](#authentication--security-credentials)
+5. [Sample cURL Commands & Postman Collection](#sample-curl-commands--postman-collection)
+6. [Sample Batch Upload JSON](#sample-batch-upload-json)
+7. [Database Schema & ER Diagram](#database-schema--er-diagram)
+8. [Test Coverage Report](#test-coverage-report)
+9. [Architecture & Design Explanation](#architecture--design-explanation)
+10. [Deliverables Checklist](#deliverables-checklist)
 
 ---
 
-## How to Run the Application (Quick Start)
+## Technology Stack
 
-You do **not** need to install Maven. The repository includes the Maven Wrapper (`./mvnw` for macOS/Linux, `mvnw.cmd` for Windows).
+- **Language:** Java 17 (OpenJDK)
+- **Framework:** Spring Boot 3.3.4
+- **Persistence:** Spring Data JPA, Hibernate 6
+- **Database Support:**
+  - **MySQL 8.4** (Default configuration; Docker Compose file included)
+  - **PostgreSQL 16** (Supported via `postgres` profile)
+  - **H2 (File-based Persistent)** (Supported via `filedb` profile for standalone evaluation without external database setup)
+- **Security:** Spring Security 6 (HTTP Basic Authentication, BCrypt password hashing, stateless sessions)
+- **API Documentation:** OpenAPI 3 / Swagger UI (`springdoc-openapi-starter-webmvc-ui` 2.6.0)
+- **Monitoring:** Spring Boot Actuator (`/actuator/health`)
+- **Testing:** JUnit 5, Mockito, Spring Boot Test, JaCoCo (0.8.11)
+- **Build Tool:** Apache Maven with Maven Wrapper (`./mvnw`)
+
+---
+
+## How to Run the Application
+
+The repository includes the Maven Wrapper (`./mvnw` on macOS/Linux, `mvnw.cmd` on Windows), so you do not need Maven pre-installed.
 
 ### Prerequisites
-- **Java 17 JDK** installed (`java -version` should output `17.x`).
+- **Java 17 JDK** installed (`java -version` should show `17.x`).
+- Optional: **Docker & Docker Compose** (if running with MySQL or PostgreSQL containers).
 
 ---
 
-### Option A: The Fastest Way (Zero-Setup File Database)
-You can start the application immediately without installing or configuring MySQL. This profile uses a persistent SQL database on your physical disk at `./data/tgd_real_db`:
+### Option 1: Standalone Evaluation with Persistent File Database (Fastest Local Verification)
 
-#### On macOS / Linux:
+If you want to evaluate the application immediately without starting Docker or installing MySQL, use the `filedb` profile. This runs an embedded H2 database configured in file-persistence mode (`jdbc:h2:file:./data/tgd_real_db`). All data is saved to disk under `./data/` and persists across application restarts.
+
+**On macOS / Linux:**
 ```bash
 ./mvnw spring-boot:run -Dspring-boot.run.profiles=filedb
 ```
 
-#### On Windows (Command Prompt / PowerShell):
+**On Windows (Command Prompt / PowerShell):**
 ```cmd
 .\mvnw.cmd spring-boot:run -Dspring-boot.run.profiles=filedb
 ```
 
 ---
 
-### Option B: Running in Your IDE (Eclipse / STS / IntelliJ)
-1. **Import the project:**
-   - In **Eclipse/STS:** `File` &rarr; `Import...` &rarr; `Maven` &rarr; `Existing Maven Projects` &rarr; browse to the folder and click `Finish`.
-   - In **IntelliJ IDEA:** `File` &rarr; `Open...` &rarr; select the folder &rarr; click `Trust Project`.
-2. **Verify Java 17:** Ensure the project SDK / JRE is set to **Java 17**.
-3. **Run the main class:**
-   - Locate `src/main/java/com/avega/tgd/TaxGapDetectionApplication.java`.
-   - Right-click &rarr; **Run As** &rarr; **Java Application** (or Spring Boot App).
-   - *Tip:* To run with the zero-setup persistent database, add `--spring.profiles.active=filedb` in your Run Configuration's **Program arguments**.
+### Option 2: Running with MySQL (Default Profile via Docker Compose)
+
+The default configuration (`application.properties`) points to MySQL on `localhost:3306`. A pre-configured `docker-compose.yml` is provided at the repository root.
+
+1. **Start the MySQL container:**
+   ```bash
+   docker compose up -d mysql-db
+   ```
+2. **Run the application:**
+   ```bash
+   # macOS / Linux
+   DB_PASSWORD=root ./mvnw spring-boot:run
+
+   # Windows (Command Prompt)
+   set DB_PASSWORD=root
+   .\mvnw.cmd spring-boot:run
+
+   # Windows (PowerShell)
+   $env:DB_PASSWORD="root"; .\mvnw.cmd spring-boot:run
+   ```
 
 ---
 
-### Option C: Build and Run the Packaged JAR
+### Option 3: Running with PostgreSQL
+
+1. **Start the PostgreSQL container:**
+   ```bash
+   docker compose up -d postgres-db
+   ```
+2. **Run the application with the PostgreSQL profile:**
+   ```bash
+   # macOS / Linux
+   ./mvnw spring-boot:run -Dspring-boot.run.profiles=postgres
+
+   # Windows
+   .\mvnw.cmd spring-boot:run -Dspring-boot.run.profiles=postgres
+   ```
+
+---
+
+### Option 4: Running in an IDE (IntelliJ IDEA / Eclipse / STS)
+
+1. **Import:**
+   - **IntelliJ IDEA:** Open the project folder &rarr; select `Trust Project` &rarr; Maven dependencies will sync automatically.
+   - **Eclipse / Spring Tool Suite:** `File` &rarr; `Import...` &rarr; `Maven` &rarr; `Existing Maven Projects` &rarr; select root directory.
+2. **JDK Setting:** Ensure Project SDK / JRE is set to **Java 17**.
+3. **Run Configuration:**
+   - Run `TaxGapDetectionApplication.java` (`src/main/java/com/avega/tgd/TaxGapDetectionApplication.java`).
+   - To use the persistent file database, add `--spring.profiles.active=filedb` to the program arguments.
+
+---
+
+### Option 5: Build and Run the Packaged JAR
+
 ```bash
 # Build the executable fat JAR (runs all 49 tests automatically)
 ./mvnw clean package
 
-# Run the packaged application
+# Run with file database
 java -jar target/tax-gap-detection-service-1.0.0.jar --spring.profiles.active=filedb
+
+# Or run with MySQL
+java -jar target/tax-gap-detection-service-1.0.0.jar --DB_PASSWORD=root
 ```
 
 ---
 
-### How to Verify It's Running
-Once started, open your web browser to access:
+### Verification Endpoints
 
-* **Interactive Swagger UI:** [http://localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html)
-* **Application Health Check:** [http://localhost:8080/actuator/health](http://localhost:8080/actuator/health) *(returns `{"status":"UP"}`)*
-* **H2 Database Web Console:** [http://localhost:8080/h2-console](http://localhost:8080/h2-console)  
+Once the application is running, the following endpoints are available:
+
+- **Swagger UI (Interactive API documentation):** [http://localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html)
+- **OpenAPI JSON specification:** [http://localhost:8080/v3/api-docs](http://localhost:8080/v3/api-docs)
+- **Health Check:** [http://localhost:8080/actuator/health](http://localhost:8080/actuator/health) *(returns `{"status":"UP"}`)*
+- **H2 Console (only active when using `filedb` profile):** [http://localhost:8080/h2-console](http://localhost:8080/h2-console)  
   *(JDBC URL: `jdbc:h2:file:./data/tgd_real_db`, User: `sa`, Password: leave blank)*
 
 ---
 
-## Database Setup Instructions
+## Database Setup & Configuration
 
-The application satisfies the requirement to run on a **real relational SQL database (no ephemeral in-memory storage)**. You have 3 simple choices:
+The application supports three database setups. The schema and initial data (default users and compliance rules) are automatically managed on startup via Hibernate DDL (`spring.jpa.hibernate.ddl-auto=update`) and the idempotent `DatabaseDataInitializer` component.
 
-### 1. File-Based Real SQL Database (Default for Local Testing)
-- **Zero external installation needed.**
-- Stores data permanently on your hard drive at `./data/tgd_real_db`. Data remains intact even after restarting the application.
-- **Activate via:** `--spring.profiles.active=filedb`
+### Comparison of Database Options
 
-### 2. Docker Compose (MySQL 8.4 or PostgreSQL 16)
-If you prefer running a dedicated MySQL or PostgreSQL instance, a pre-configured `docker-compose.yml` is included in the project root:
+| Option | Technology | When to Use | Command / Profile |
+| :--- | :--- | :--- | :--- |
+| **1. File-Based SQL** | H2 in file persistence mode (`./data/tgd_real_db`) | Fastest local testing; no external service needed; data persists on disk across restarts | `--spring.profiles.active=filedb` |
+| **2. Docker MySQL** | MySQL 8.4 container | Primary RDBMS specified by assessment; clean containerized environment | `docker compose up -d mysql-db` |
+| **3. Docker PostgreSQL** | PostgreSQL 16 container | Alternative production RDBMS | `--spring.profiles.active=postgres` |
+| **4. Local MySQL Server** | Installed MySQL instance | Custom local environment | Standard `./mvnw spring-boot:run` with env vars |
 
+### Note on Database Implementation Choices
+The default profile (`application.properties`) is configured for **MySQL**, using `com.mysql.cj.jdbc.Driver` and `org.hibernate.dialect.MySQLDialect`.
+
+The `filedb` profile is provided as a practical alternative for evaluation. It uses H2 in disk-persistent mode (`jdbc:h2:file:./data/tgd_real_db;MODE=MySQL`), which writes data directly to physical files on the machine. This ensures that records survive application restarts while allowing developers to evaluate the application without running MySQL.
+
+If you connect to an existing local MySQL server without Docker:
 ```bash
-# Start MySQL and PostgreSQL containers in the background
-docker compose up -d
+export DB_HOST=localhost
+export DB_PORT=3306
+export DB_NAME=tgd_db
+export DB_USERNAME=root
+export DB_PASSWORD=your_password
 
-# Run application using MySQL (default configuration)
 ./mvnw spring-boot:run
-
-# Or run application using PostgreSQL
-./mvnw spring-boot:run -Dspring-boot.run.profiles=postgres
 ```
-
-### 3. Dedicated Local MySQL Server
-If you already have a MySQL server installed locally on your machine:
-1. Create the database in MySQL:
-   ```sql
-   CREATE DATABASE tgd_db;
-   ```
-2. Start the application passing your database credentials via environment variables:
-   ```bash
-   export DB_HOST=localhost
-   export DB_PORT=3306
-   export DB_NAME=tgd_db
-   export DB_USERNAME=root
-   export DB_PASSWORD=your_mysql_password
-
-   ./mvnw spring-boot:run
-   ```
 
 ---
 
-## Sample cURL & Postman Calls
+## Authentication & Security Credentials
 
-A ready-to-import Postman collection with all **18 pre-configured API requests** is located at:
-📁 [`sample-requests/tgd_postman_collection.json`](sample-requests/tgd_postman_collection.json)
+The application uses Spring Security 6 with HTTP Basic Authentication and stateless session management (`SessionCreationPolicy.STATELESS`).
 
-To use it: Open Postman &rarr; Click **Import** &rarr; Select `tgd_postman_collection.json`. All requests come pre-configured with Basic Auth (`auditor:auditor123`) and point to `http://localhost:8080`.
+Two user accounts are pre-seeded in the database on application startup:
 
-Here are copy-pasteable cURL commands to test the primary workflows directly:
+| Username | Password | Role | Permissions |
+| :--- | :--- | :--- | :--- |
+| **`auditor`** | `auditor123` | `ROLE_AUDITOR` | Ingest transactions, query transactions, view tax gap analyses, filter exceptions, generate reports, inspect audit trails, and read compliance rules. |
+| **`admin`** | `admin123` | `ROLE_ADMIN` | All `ROLE_AUDITOR` permissions + create, update, and toggle compliance rules (`/api/v1/rules/**`). |
 
-### 1. Ingest a Batch of Transactions (Requirement 1 & 2)
+*Note: Passwords are encrypted in the database using BCrypt.*
+
+---
+
+## Sample cURL Commands & Postman Collection
+
+### Postman Collection
+A complete Postman collection containing **18 pre-configured API requests** organized by resource is available at:  
+📂 [`sample-requests/tgd_postman_collection.json`](sample-requests/tgd_postman_collection.json)
+
+**How to use:**
+1. Open Postman &rarr; Click **Import** &rarr; Select `sample-requests/tgd_postman_collection.json`.
+2. The collection uses variables `{{baseUrl}}` (defaults to `http://localhost:8080`) and pre-configured Basic Auth credentials (`auditor:auditor123`).
+3. You can execute requests in sequence: Ingest Transactions &rarr; View Reports &rarr; Filter Exceptions &rarr; Audit Logs &rarr; Rule Management.
+
+---
+
+### cURL Commands
+
+All commands below can be executed directly from your terminal.
+
+#### 1. Ingest a Batch of Transactions (Requirement 1 & 2)
 ```bash
 curl -i -X POST http://localhost:8080/api/v1/transactions/batch \
   -u auditor:auditor123 \
   -H "Content-Type: application/json" \
-  -d @sample-requests/batch_transactions_valid.json
+  -d '[
+    {
+      "transactionId": "TX-BATCH-001",
+      "date": "2026-10-15",
+      "customerId": "CUST-CORP-A",
+      "amount": 250000.00,
+      "taxRate": 0.18,
+      "reportedTax": 45000.00,
+      "transactionType": "SALE"
+    },
+    {
+      "transactionId": "TX-BATCH-002",
+      "date": "2026-10-16",
+      "customerId": "CUST-CORP-A",
+      "amount": 100000.00,
+      "taxRate": 0.18,
+      "reportedTax": 12000.00,
+      "transactionType": "SALE"
+    },
+    {
+      "transactionId": "TX-BATCH-003",
+      "date": "2026-10-17",
+      "customerId": "CUST-CORP-B",
+      "amount": 60000.00,
+      "taxRate": 0.12,
+      "reportedTax": 7200.00,
+      "transactionType": "SALE"
+    }
+  ]'
 ```
 
-### 2. Ingest a Single Transaction
+*(You can also use the sample file directly: `-d @sample-requests/batch_transactions_valid.json`)*
+
+#### 2. Ingest a Single Transaction
 ```bash
 curl -i -X POST http://localhost:8080/api/v1/transactions \
   -u auditor:auditor123 \
   -H "Content-Type: application/json" \
   -d '{
-    "transactionId": "TX-DEMO-001",
-    "date": "2026-03-15",
-    "customerId": "CUST-GLOBAL-01",
-    "amount": 250000.00,
+    "transactionId": "TX-SINGLE-001",
+    "date": "2026-10-18",
+    "customerId": "CUST-RETAIL-1",
+    "amount": 150000.00,
     "taxRate": 0.18,
-    "reportedTax": 45000.00,
+    "reportedTax": 27000.00,
     "transactionType": "SALE"
   }'
 ```
 
-### 3. Retrieve Customer Tax Summary Report (Requirement 6.A)
-*Executes high-performance SQL push-down aggregation:*
+#### 3. Ingest a Refund Transaction (Referencing Original Sale)
+```bash
+curl -i -X POST http://localhost:8080/api/v1/transactions \
+  -u auditor:auditor123 \
+  -H "Content-Type: application/json" \
+  -d '{
+    "transactionId": "TX-REFUND-001",
+    "date": "2026-10-19",
+    "customerId": "CUST-CORP-A",
+    "amount": 20000.00,
+    "taxRate": 0.18,
+    "reportedTax": 3600.00,
+    "transactionType": "REFUND",
+    "originalTransactionId": "TX-BATCH-001"
+  }'
+```
+
+#### 4. Retrieve Customer Tax Summary Report (Requirement 6.A)
+*Executes database push-down aggregation grouping total transactions, sales, refunds, expected tax, reported tax, and net tax gap per customer:*
 ```bash
 curl -i -X GET http://localhost:8080/api/v1/reports/customer-tax-summary \
   -u auditor:auditor123
 ```
 
-### 4. Retrieve Executive Exception Summary Report (Requirement 6.B)
-*Returns total exceptions, severity breakdown, and customer rankings:*
+#### 5. Retrieve Executive Exception Summary Report (Requirement 6.B)
+*Returns aggregate counts by severity and top customers by exception count:*
 ```bash
 curl -i -X GET http://localhost:8080/api/v1/reports/exception-summary \
   -u auditor:auditor123
 ```
 
-### 5. Filter Exceptions by Severity (Requirement 4)
+#### 6. Filter Exceptions by Dynamic Parameters (Requirement 4)
+*Filter by severity:*
 ```bash
 curl -i -X GET "http://localhost:8080/api/v1/exceptions?severity=HIGH" \
   -u auditor:auditor123
 ```
 
-### 6. Filter Exceptions by Customer ID
+*Filter by customer ID:*
 ```bash
-curl -i -X GET "http://localhost:8080/api/v1/exceptions?customerId=CUST-ACME" \
+curl -i -X GET "http://localhost:8080/api/v1/exceptions?customerId=CUST-CORP-A" \
   -u auditor:auditor123
 ```
 
-### 7. Filter Exceptions by Compliance Rule Name
+*Filter by rule name:*
 ```bash
-curl -i -X GET "http://localhost:8080/api/v1/exceptions?ruleName=REFUND_VALIDATION" \
+curl -i -X GET "http://localhost:8080/api/v1/exceptions?ruleName=HIGH_VALUE_TRANSACTION" \
   -u auditor:auditor123
 ```
 
-### 8. View Immutable Audit Trail for a Specific Transaction (Requirement 5)
+#### 7. Retrieve Transaction Audit Trail (Requirement 5)
 ```bash
-curl -i -X GET http://localhost:8080/api/v1/audit-logs/transaction/TX-DEMO-001 \
+curl -i -X GET http://localhost:8080/api/v1/audit-logs/transaction/TX-BATCH-001 \
   -u auditor:auditor123
 ```
 
-### 9. Toggle a Compliance Rule (Admin Role Only - Requirement 3)
+#### 8. List Configured Compliance Rules
+```bash
+curl -i -X GET http://localhost:8080/api/v1/rules \
+  -u auditor:auditor123
+```
+
+#### 9. Toggle a Compliance Rule (Admin Only - Requirement 3)
 ```bash
 curl -i -X PUT http://localhost:8080/api/v1/rules/1/toggle \
   -u admin:admin123
@@ -219,55 +353,70 @@ curl -i -X PUT http://localhost:8080/api/v1/rules/1/toggle \
 
 ## Sample Batch Upload JSON
 
-Here is the sample JSON payload (located in `sample-requests/batch_transactions_valid.json`) to test transaction ingestion:
+Below is a realistic sample payload demonstrating multiple transaction types, including compliant sales, underpaid sales triggering tax gaps, high-value amounts triggering compliance flags, and linked refunds:
 
 ```json
 [
   {
-    "transactionId": "TX-SALE-1001",
+    "transactionId": "TX-2026-001",
     "date": "2026-10-15",
-    "customerId": "CUST-ALPHA",
+    "customerId": "CUST-ACME-CORP",
     "amount": 25000.00,
     "taxRate": 0.18,
     "reportedTax": 4500.00,
     "transactionType": "SALE"
   },
   {
-    "transactionId": "TX-SALE-1002",
+    "transactionId": "TX-2026-002",
     "date": "2026-10-16",
-    "customerId": "CUST-ALPHA",
-    "amount": 15000.00,
+    "customerId": "CUST-ACME-CORP",
+    "amount": 150000.00,
     "taxRate": 0.18,
-    "reportedTax": 2700.50,
+    "reportedTax": 20000.00,
     "transactionType": "SALE"
   },
   {
-    "transactionId": "TX-REFUND-1003",
+    "transactionId": "TX-2026-003",
     "date": "2026-10-17",
-    "customerId": "CUST-ALPHA",
-    "amount": 5000.00,
+    "customerId": "CUST-ACME-CORP",
+    "amount": 10000.00,
     "taxRate": 0.18,
-    "reportedTax": 900.00,
+    "reportedTax": 1800.00,
     "transactionType": "REFUND",
-    "originalTransactionId": "TX-SALE-1001"
+    "originalTransactionId": "TX-2026-001"
   },
   {
-    "transactionId": "TX-SALE-2001",
+    "transactionId": "TX-2026-004",
     "date": "2026-10-18",
-    "customerId": "CUST-BETA",
-    "amount": 40000.00,
+    "customerId": "CUST-OMEGA-LTD",
+    "amount": 80000.00,
     "taxRate": 0.12,
-    "reportedTax": 4800.00,
+    "reportedTax": 9600.00,
     "transactionType": "SALE"
   }
 ]
 ```
 
+### Field Definitions
+- `transactionId` *(String, Required)*: Unique business identifier for the transaction.
+- `date` *(LocalDate, Required)*: Transaction date formatted as `YYYY-MM-DD`.
+- `customerId` *(String, Required)*: Customer or entity identifier.
+- `amount` *(BigDecimal, Required)*: Monetary value (`precision = 18, scale = 2`).
+- `taxRate` *(BigDecimal, Required)*: Decimal rate (e.g., `0.18` represents 18%).
+- `reportedTax` *(BigDecimal, Optional)*: Tax declared by the taxpayer. If null or missing, the transaction is flagged as `NON_COMPLIANT`.
+- `transactionType` *(Enum, Required)*: One of `SALE`, `REFUND`, or `EXPENSE`.
+- `originalTransactionId` *(String, Optional)*: Mandatory for `REFUND` transactions to establish the audit relationship to the original sale.
+
+Additional sample files are available in `sample-requests/`:
+- [`sample-requests/batch_transactions_valid.json`](sample-requests/batch_transactions_valid.json): Clean valid transactions.
+- [`sample-requests/batch_transactions_with_violations.json`](sample-requests/batch_transactions_with_violations.json): Transactions that trigger tax gaps and compliance rules.
+- [`sample-requests/batch_transactions_with_failures.json`](sample-requests/batch_transactions_with_failures.json): Invalid records testing fault isolation.
+
 ---
 
 ## Database Schema & ER Diagram
 
-The schema consists of 5 relational tables designed with targeted B-tree indexes to optimize report aggregations and point lookups:
+The database schema is organized into 5 relational tables:
 
 ![Database Schema Diagram](docs/images/database_schema_diagram.svg)
 
@@ -279,155 +428,162 @@ erDiagram
 
     TRANSACTIONS {
         BIGINT id PK
-        VARCHAR transaction_id UK "Unique external identifier"
-        DATE transaction_date "ISO-8601 date"
-        VARCHAR customer_id "Indexed for grouping"
+        VARCHAR transaction_id UK "Unique external transaction reference"
+        DATE transaction_date "Transaction date (YYYY-MM-DD)"
+        VARCHAR customer_id "Indexed for reporting aggregations"
         DECIMAL amount "precision 18, scale 2"
         DECIMAL tax_rate "precision 8, scale 4"
-        DECIMAL reported_tax "nullable"
+        DECIMAL reported_tax "Reported tax amount (nullable)"
         VARCHAR transaction_type "SALE, REFUND, EXPENSE"
-        VARCHAR original_transaction_id "Linked original sale"
-        VARCHAR validation_status "SUCCESS / FAILURE"
-        TEXT failure_reasons "Detailed diagnostic errors"
-        TEXT raw_payload "Verbatim unparsed input JSON"
+        VARCHAR original_transaction_id "Original transaction reference for refunds"
+        VARCHAR validation_status "SUCCESS or FAILURE"
+        TEXT failure_reasons "Validation error messages"
+        TEXT raw_payload "Original unparsed input JSON"
         DECIMAL expected_tax "amount * tax_rate"
         DECIMAL tax_gap "expected_tax - reported_tax"
-        VARCHAR compliance_status "COMPLIANT, UNDERPAID, OVERPAID"
+        VARCHAR compliance_status "COMPLIANT, UNDERPAID, OVERPAID, NON_COMPLIANT"
     }
 
     TAX_RULES {
         BIGINT id PK
         VARCHAR rule_name UK "e.g. HIGH_VALUE_TRANSACTION"
         VARCHAR description "Auditor description"
-        BOOLEAN enabled "Runtime active toggle"
+        BOOLEAN enabled "Runtime active flag"
         VARCHAR severity "HIGH, MEDIUM, LOW"
-        TEXT config_json "Customizable JSON parameters"
+        TEXT config_json "Rule configuration parameters (JSON)"
     }
 
     EXCEPTIONS {
         BIGINT id PK
-        VARCHAR transaction_id "FK reference"
-        VARCHAR customer_id "Indexed"
-        VARCHAR rule_name "Triggered compliance rule"
-        VARCHAR severity "HIGH / MEDIUM / LOW"
-        VARCHAR message "Specific violation explanation"
+        VARCHAR transaction_id "Transaction identifier"
+        VARCHAR customer_id "Customer identifier (indexed)"
+        VARCHAR rule_name "Triggered rule name"
+        VARCHAR severity "HIGH, MEDIUM, LOW"
+        VARCHAR message "Violation detail"
         DATETIME timestamp "Generation timestamp"
     }
 
     AUDIT_LOGS {
         BIGINT id PK
         VARCHAR event_type "INGESTION, RULE_EXECUTION, TAX_COMPUTATION"
-        VARCHAR transaction_id "Indexed"
-        DATETIME timestamp "Autonomous commit time"
-        TEXT detail_json "Serialized diagnostic payload"
+        VARCHAR transaction_id "Transaction identifier"
+        DATETIME timestamp "Record creation timestamp"
+        TEXT detail_json "Serialized event payload"
     }
 
     USERS {
         BIGINT id PK
         VARCHAR username UK "auditor / admin"
-        VARCHAR password "BCrypt hashed credentials"
+        VARCHAR password "BCrypt password hash"
         VARCHAR role "ROLE_AUDITOR / ROLE_ADMIN"
-        BOOLEAN enabled "Account active flag"
+        BOOLEAN enabled "Account enabled flag"
     }
 ```
 
 ### Table Indexing Strategy
-- **`idx_tx_transaction_id`** (Unique): Ensures external transaction IDs remain unique and provides $O(1)$ point lookups.
-- **`idx_tx_customer_id`**: Accelerates the `GROUP BY customer_id` SQL reporting query.
-- **`idx_tx_compliance_status`**: Optimizes compliance filtering and counts.
-- **`idx_rule_enabled`**: Allows the rule engine to fetch only active rules instantly on each batch.
-- **`idx_audit_transaction_id` & `idx_audit_event_type`**: Powers fast chronological audit trail lookups.
+- **`idx_tx_transaction_id`** (Unique): Enforces uniqueness on `transaction_id` and provides $O(1)$ point lookups.
+- **`idx_tx_customer_id`**: Accelerates `GROUP BY customer_id` queries in reporting aggregations.
+- **`idx_tx_compliance_status`**: Optimizes queries filtering by compliance state (`UNDERPAID`, `OVERPAID`, etc.).
+- **`idx_tx_date`**: Speeds up date-range filtering on transaction ingestion and reports.
+- **`idx_rule_enabled`**: Allows the rule engine to fetch only active rules quickly during ingestion.
+- **`idx_exc_customer_id` & `idx_exc_severity`**: Supports dynamic multi-column filtering in exception search APIs.
+- **`idx_audit_transaction_id` & `idx_audit_event_type`**: Powers chronological audit trail queries for specific transactions.
 
 ---
 
-## Test Coverage Report (82.73% Line Coverage)
+## Test Coverage Report
 
-The project includes **49 comprehensive unit and integration tests** covering the entire service layer, rule engine evaluators, repositories, controllers, security filters, and exception handling.
+The project includes **49 automated unit and integration tests** covering the service layer, rule engine evaluators, repositories, controllers, security filters, and exception handling.
 
-The assignment requires a minimum of **40–50% test coverage**. This service achieves **82.73% line coverage** and **82.87% instruction coverage**.
+The assessment requires a minimum of **40–50% test coverage**. This service achieves **82.73% line coverage** and **82.87% instruction coverage**.
 
 ![JaCoCo Test Coverage Report](docs/images/test_coverage_report.png)
 
-### Coverage Breakdown by Package
+### JaCoCo Coverage Summary
+
+| Metric | Covered | Total | Percentage |
+| :--- | :---: | :---: | :---: |
+| **Lines** | **958** | **1,158** | **82.73%** |
+| **Instructions** | **3,516** | **4,243** | **82.87%** |
+| **Branches** | **147** | **240** | **61.25%** |
+| **Test Execution** | **49 passed** | **49 run (0 failures, 0 errors)** | **100%** |
+
+### Coverage by Package
 
 | Package | Responsibility | Line Coverage | Instruction Coverage |
 | :--- | :--- | :---: | :---: |
 | `com.avega.tgd.service.impl` | Ingestion, Tax Gap Engine, Reports | **89.5%** | **87.0%** |
-| `com.avega.tgd.service.rules.impl` | Mandatory Compliance Rule Evaluators | **81.2%** | **78.0%** |
+| `com.avega.tgd.service.rules.impl` | Compliance Rule Evaluators | **81.2%** | **78.0%** |
 | `com.avega.tgd.controller` | REST API Endpoints & Request Mapping | **87.7%** | **83.0%** |
 | `com.avega.tgd.config` | Spring Security, OpenAPI, DB Initializer | **100.0%** | **98.0%** |
 | `com.avega.tgd.dto.request` | Request Transfer Objects & Validation | **100.0%** | **100.0%** |
-| `com.avega.tgd.domain.enums` | Strongly-Typed Business Enums | **100.0%** | **100.0%** |
-| **TOTAL PROJECT** | **Complete Application Bundle** | **82.73%** | **82.87%** |
+| `com.avega.tgd.domain.enums` | Strongly-Typed Domain Enums | **100.0%** | **100.0%** |
+| **Total Project** | **Complete Application Bundle** | **82.73%** | **82.87%** |
 
----
-
-## Architecture & Design Explanation
-
-> 📄 **Complete 1–2 Page Document:** For the complete, detailed engineering narrative, read [`docs/ARCHITECTURE_DESIGN.md`](docs/ARCHITECTURE_DESIGN.md).
-
-Here is a summary of the 4 core architectural decisions made in this project:
-
-### 1. Ingestion Fault Isolation
-When uploading a batch of 1,000 transactions, an invalid transaction (e.g., negative amount or malformed date) should never fail the entire batch. In this application, each transaction is evaluated inside its own boundary. Valid transactions are computed and stored normally; failing ones are marked `FAILURE` with specific reasons in `failure_reasons`. Additionally, the unparsed input JSON is preserved verbatim in `raw_payload` to guarantee legal non-repudiation during tax audits.
-
-### 2. Arbitrary-Precision Financial Math with Tolerance
-Financial calculations never use `double` or `float` due to binary floating-point drift. All money values use `java.math.BigDecimal` with `RoundingMode.HALF_UP`. Furthermore, real-world retail systems often have harmless line-item rounding differences. We enforce statutory tolerance boundaries:
-- $\lvert\text{taxGap}\rvert \le 1.00 \implies \text{COMPLIANT}$
-- $\text{taxGap} > 1.00 \implies \text{UNDERPAID}$
-- $\text{taxGap} < -1.00 \implies \text{OVERPAID}$
-- Missing reported tax $\implies \text{NON\_COMPLIANT}$
-
-### 3. Extensible Rule Engine (Strategy Pattern)
-Rather than hardcoding compliance rules in nested Java `if-else` blocks, the system uses the **Strategy Pattern**. Each rule implements a `TaxRuleEvaluator` interface. Evaluators register dynamically with `RuleEngineService`. Active rules and thresholds (`config_json`) are stored in the database. Administrators can alter thresholds or disable rules on the fly via REST APIs without server redeployment.
-
-### 4. Database-Level SQL Aggregation Reporting
-To satisfy the requirement that reports run efficiently on real relational databases without in-memory entity iteration, summary metrics are computed entirely within the database engine using JPQL `GROUP BY` and conditional `CASE` statements. Results map directly into lightweight Spring Data interface projections (`CustomerTaxSummaryProjection`), eliminating JVM memory pressure and garbage collection pauses.
-
----
-
-## Spring Security & Pre-Seeded Users
-
-Authentication and Role-Based Access Control (RBAC) are powered by Spring Security 6 using the `users` table pre-seeded on application startup.
-
-### Pre-Seeded Credentials
-
-| Username | Password | Role | Permissions |
-| :--- | :--- | :--- | :--- |
-| **`auditor`** | `auditor123` | `ROLE_AUDITOR` | Upload transactions, view reports, inspect audit logs, view exceptions, read rules |
-| **`admin`** | `admin123` | `ROLE_ADMIN` | All Auditor permissions + Create, Update, and Toggle Compliance Rules |
-
-- Passwords are encrypted using **BCrypt** with salt rounds.
-- Communication is **stateless** (`SessionCreationPolicy.STATELESS`) using HTTP Basic Authentication headers, making the API friendly to cURL, Postman, and automated CI/CD pipelines.
-
----
-
-## Running the Test Suite
-
-To run all 49 automated unit and integration tests and regenerate the HTML JaCoCo report:
+### How to Run the Tests Locally
 
 ```bash
+# Execute test suite and regenerate coverage report
 ./mvnw clean test
-```
 
-To view the generated report in your browser:
-```bash
-# macOS
+# View the HTML coverage report
+# On macOS:
 open target/site/jacoco/index.html
 
-# Windows
+# On Windows:
 start target/site/jacoco/index.html
 ```
 
 ---
 
-## Submission Checklist Verification
+## Architecture & Design Explanation
 
-- [x] **Git Repository URL** configured (`git@github.com:Abhishekkkkkkkkkkk/tax-gap-detection-service.git`)
-- [x] **How to run the app** (Quick start for Maven, JAR, and IDE)
-- [x] **DB setup instructions** (`filedb` zero-setup, Docker Compose MySQL/Postgres, local MySQL)
-- [x] **Sample cURL & Postman collection** (18 pre-configured API requests in `sample-requests/`)
-- [x] **Database schema diagram** (High-res SVG diagram + GitHub Mermaid diagram)
-- [x] **Test coverage screenshot** (Genuine JaCoCo report showing 82.73% line coverage)
-- [x] **Sample JSON for transaction upload** (Batch payloads included in README and `sample-requests/`)
-- [x] **Short design & architecture explanation** (1–2 page document in `docs/ARCHITECTURE_DESIGN.md`)
+> 📄 **Full Architecture Document:** A detailed 1–2 page engineering design narrative is available in [`docs/ARCHITECTURE_DESIGN.md`](docs/ARCHITECTURE_DESIGN.md).
+
+Below is an overview of the key design decisions:
+
+### 1. Ingestion Fault Isolation & Forensic Non-Repudiation
+In high-volume batch processing, an invalid record (e.g., negative amount, invalid date format) should never fail the entire batch. The ingestion pipeline processes each transaction inside its own validation boundary:
+- Valid transactions proceed through tax calculation, rule evaluation, exception creation, and persistence.
+- Malformed records are captured with `validation_status = 'FAILURE'` and diagnostic messages stored in `failure_reasons`.
+- In all cases, the verbatim unparsed JSON payload is stored in `raw_payload` to preserve the original evidence for legal compliance and audit reviews.
+
+### 2. Arbitrary-Precision Financial Math & Tolerance
+Binary floating-point types (`double`, `float`) are prone to precision drift and are never used for currency values. All money calculations use `java.math.BigDecimal` with `RoundingMode.HALF_UP` scaled to 2 decimal places.
+
+To accommodate real-world line-item rounding differences in ERPs and POS systems, the engine applies a statutory $\pm 1.00$ tolerance boundary:
+- $\lvert\text{taxGap}\rvert \le 1.00 \implies \text{COMPLIANT}$
+- $\text{taxGap} > 1.00 \implies \text{UNDERPAID}$
+- $\text{taxGap} < -1.00 \implies \text{OVERPAID}$
+- Missing or null reported tax $\implies \text{NON\_COMPLIANT}$
+
+### 3. Dynamic Rule Engine (Strategy Pattern)
+To avoid hardcoding business rules in nested conditional logic, each compliance check is encapsulated in a dedicated bean implementing `TaxRuleEvaluator`:
+- `HIGH_VALUE_TRANSACTION`: Flags transactions exceeding a threshold (default 100,000.00).
+- `REFUND_VALIDATION`: Flags refund transactions whose amount exceeds the linked original sale, or where the original transaction does not exist.
+- `GST_SLAB_VIOLATION`: Enforces minimum statutory tax rates for high-bracket transactions (e.g., rate must be at least 18% for amounts over 50,000.00).
+
+Evaluators register dynamically with `RuleEngineService`. Active rules and JSON configurations are retrieved from the `tax_rules` table at runtime, allowing administrators to modify thresholds or disable rules via REST APIs without application downtime.
+
+### 4. Database-Level SQL Aggregation Reporting
+Rather than loading large sets of entity objects into the JVM heap and iterating over them in Java streams, reporting calculations are executed entirely inside the database engine. Using JPQL aggregations (`GROUP BY t.customerId`, `SUM`, `COUNT`, and conditional `CASE` statements) paired with **Spring Data Interface Projections** (`CustomerTaxSummaryProjection`), the database returns pre-aggregated numeric tuples. This keeps JVM memory consumption and garbage collection overhead minimal even over large transaction tables.
+
+### 5. Autonomous Audit Logging (`REQUIRES_NEW`)
+Audit log writes must persist even if the surrounding business operation encounters an error or rolls back. The audit recording method (`AuditLogServiceImpl.logEvent`) is marked with `@Transactional(propagation = Propagation.REQUIRES_NEW)`. This executes each audit insert in an independent physical database transaction, ensuring the audit trail remains intact regardless of the outcome of the outer transaction.
+
+---
+
+## Deliverables Checklist
+
+Every deliverable specified in the assessment requirements is included in this repository:
+
+| Required Deliverable | Location in Repository |
+| :--- | :--- |
+| **1. GitHub Repository URL** | [https://github.com/Abhishekkkkkkkkkkk/tax-gap-detection-service](https://github.com/Abhishekkkkkkkkkkk/tax-gap-detection-service) |
+| **2. How to run the application** | [README.md #how-to-run-the-application](#how-to-run-the-application) (Quick start, Docker, IDE, JAR) |
+| **3. Database setup instructions** | [README.md #database-setup--configuration](#database-setup--configuration) (MySQL default, PostgreSQL, persistent filedb) |
+| **4. Sample cURL & Postman requests** | [README.md #sample-curl-commands--postman-collection](#sample-curl-commands--postman-collection) & [`sample-requests/tgd_postman_collection.json`](sample-requests/tgd_postman_collection.json) |
+| **5. Database schema diagram** | [README.md #database-schema--er-diagram](#database-schema--er-diagram) & [`docs/images/database_schema_diagram.svg`](docs/images/database_schema_diagram.svg) |
+| **6. Test coverage report** | [README.md #test-coverage-report](#test-coverage-report) & [`docs/images/test_coverage_report.png`](docs/images/test_coverage_report.png) (82.73% line coverage) |
+| **7. Sample batch upload JSON** | [README.md #sample-batch-upload-json](#sample-batch-upload-json) & [`sample-requests/batch_transactions_valid.json`](sample-requests/batch_transactions_valid.json) |
+| **8. Design & architecture explanation (1–2 pages)** | [README.md #architecture--design-explanation](#architecture--design-explanation) & [`docs/ARCHITECTURE_DESIGN.md`](docs/ARCHITECTURE_DESIGN.md) |
