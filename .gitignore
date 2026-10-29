@@ -82,3 +82,7 @@ Thumbs.db
 # Docker local overrides and environments
 .env.local
 docker-compose.override.yml
+
+# Local developer scripts
+push_to_github.sh
+*.local.sh
