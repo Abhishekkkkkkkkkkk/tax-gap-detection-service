@@ -1,34 +1,84 @@
-target/
-!.mvn/wrapper/maven-wrapper.jar
-!**/src/main/**/target/
-!**/src/test/**/target/
+# ==============================================================================
+# Git Ignore - Tax Gap Detection & Compliance Validation Service
+# ==============================================================================
 
-### STS ###
-.apt_generated
+# Compiled class files and build artifacts
+target/
+build/
+dist/
+out/
+bin/
+*.class
+
+# Log files and crash dumps
+*.log
+*.tmp
+*.bak
+*.swp
+*~
+hs_err_pid*
+replay_pid*
+
+# Persistent database files (H2 / local DB storage)
+data/
+*.db
+*.mv.db
+*.trace.db
+
+# Maven wrapper exclusions (preserve wrapper JAR and properties)
+!.mvn/wrapper/maven-wrapper.jar
+!.mvn/wrapper/maven-wrapper.properties
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
+
+# Eclipse / Spring Tool Suite (STS)
+.apt_generated/
+.apt_generated_tests/
 .classpath
 .factorypath
 .project
-.settings
+.settings/
 .springBeans
-.sts4-cache
+.sts4-cache/
 
-### IntelliJ IDEA ###
-.idea
+# IntelliJ IDEA
+.idea/
 *.iws
 *.iml
 *.ipr
+.idea_modules/
 
-### NetBeans ###
+# Visual Studio Code
+.vscode/
+*.code-workspace
+.history/
+
+# NetBeans
 /nbproject/private/
-/build/
 /nbbuild/
-/dist/
 /nbdist/
 /.nb-gradle/
 
-### macOS ###
+# Operating System files
+# macOS
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
 
-### Persistent DB files ###
-data/
-*.db
+# Windows
+[Dd]esktop.ini
+*.stackdump
+
+# Docker local overrides and environments
+.env.local
+docker-compose.override.yml
