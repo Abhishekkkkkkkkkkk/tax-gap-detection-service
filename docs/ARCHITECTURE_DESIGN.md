@@ -1,8 +1,4 @@
 # Architecture & System Design Document
-**Project:** Tax Gap Detection & Compliance Validation Service  
-**Author:** Abhishek Kumar  
-**Target:** Technical Evaluation / Architecture Review  
-
 ---
 
 ## 1. Introduction & Context
